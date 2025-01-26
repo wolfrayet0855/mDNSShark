@@ -22,7 +22,7 @@ class NetworkScanner: ObservableObject {
         // Mark scanning as in-progress
         isScanning = true
 
-        // Try to detect the local IP prefix
+        // Attempt to detect the local IP prefix
         guard let prefix = getLocalIPPrefix() else {
             print("❗️ Could not detect local IP prefix. Defaulting to 192.168.1.")
             scanNetworkWithPrefix("192.168.1.")
@@ -40,16 +40,15 @@ class NetworkScanner: ObservableObject {
             for i in 1...255 {
                 let ipAddress = "\(prefix)\(i)"
 
-                // SwiftPing approach (ICMP):
+                // Use SwiftPing for ICMP:
                 self.pingIPAddressICMP(ipAddress) { isActive in
                     DispatchQueue.main.async {
-                        // For debugging:
+                        // Debug:
                         print("   → \(ipAddress) isActive = \(isActive)")
 
                         self.devices.append(Device(ipAddress: ipAddress, isActive: isActive))
 
-                        // If we’ve reached the last address, toggle isScanning off.
-                        // Alternatively, you could keep track of completion with a counter.
+                        // If we've reached the last address, toggle isScanning off.
                         if i == 255 {
                             self.isScanning = false
                         }
@@ -61,18 +60,15 @@ class NetworkScanner: ObservableObject {
 
     // MARK: - SwiftPing-based ICMP method
     private func pingIPAddressICMP(_ ipAddress: String, completion: @escaping (Bool) -> Void) {
+        // Configuration for one-time ping
         let config = PingConfiguration(
             pInterval: 1.0,
             withTimeout: 2.0,
             withPayloadSize: 64
         )
 
-        // For debugging, show which IP is about to be pinged
-        // (You will see this in the Xcode console.)
-        // print("Pinging \(ipAddress)...")
-
         SwiftPing.pingOnce(host: ipAddress, configuration: config, queue: queue) { response in
-            // If ‘response.error’ is nil, that typically means we got an echo reply.
+            // If `response.error` is nil, that usually means we got an echo reply.
             let isActive = (response.error == nil)
             completion(isActive)
         }

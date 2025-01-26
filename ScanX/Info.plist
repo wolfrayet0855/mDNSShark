@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>This app scans local IPs to discover devices on your network.</string>
+	<string>We need local network access to scan for nearby devices</string>
 </dict>
 </plist>
