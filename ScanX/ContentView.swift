@@ -8,10 +8,10 @@ struct ContentView: View {
             VStack(spacing: 20) {
                 // Scan Button
                 Button(action: {
+                    print("🔵 [UI] 'Scan Network' button tapped")
                     scanner.scanNetwork()
                 }) {
                     if scanner.isScanning {
-                        // Simple activity indicator text, or you could use a ProgressView
                         Text("Scanning...")
                             .font(.headline)
                             .padding()
@@ -30,7 +30,6 @@ struct ContentView: View {
                     }
                 }
                 .padding(.horizontal)
-                // Disable the button while scanning
                 .disabled(scanner.isScanning)
 
                 // Device List
