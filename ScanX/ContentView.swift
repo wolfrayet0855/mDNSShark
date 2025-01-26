@@ -10,15 +10,28 @@ struct ContentView: View {
                 Button(action: {
                     scanner.scanNetwork()
                 }) {
-                    Text("Scan Network")
-                        .font(.headline)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+                    if scanner.isScanning {
+                        // Simple activity indicator text, or you could use a ProgressView
+                        Text("Scanning...")
+                            .font(.headline)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.gray)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    } else {
+                        Text("Scan Network")
+                            .font(.headline)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
                 }
                 .padding(.horizontal)
+                // Disable the button while scanning
+                .disabled(scanner.isScanning)
 
                 // Device List
                 if scanner.devices.isEmpty {
@@ -43,4 +56,3 @@ struct ContentView: View {
         }
     }
 }
-
