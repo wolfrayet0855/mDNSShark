@@ -14,7 +14,7 @@ func getWiFiAddress() -> String? {
         let interface = ptr.pointee
         let flags = Int32(interface.ifa_flags)
 
-        if (flags & (IFF_UP|IFF_RUNNING|IFF_LOOPBACK)) == (IFF_UP|IFF_RUNNING),
+        if (flags & (IFF_UP | IFF_RUNNING | IFF_LOOPBACK)) == (IFF_UP | IFF_RUNNING),
            interface.ifa_addr.pointee.sa_family == UInt8(AF_INET) {
             let name = String(cString: interface.ifa_name)
             // On iOS, Wi-Fi is typically "en0"
@@ -39,37 +39,40 @@ func getWiFiAddress() -> String? {
 }
 
 /**
- Extracts prefix for 10.x.x.x, 192.168.x.x, or 172.16-31.x.x
- Returns something like "10.0.1." or "192.168.0." etc.
+ Extracts the prefix from a given private IPv4 address.
+ For addresses in the ranges 10.x.x.x, 192.168.x.x, or 172.(16-31).x.x,
+ returns a prefix like "10.0.1." or "192.168.0." etc.
  If the IP is not in these private ranges, returns nil.
  */
-func getLocalIPPrefix() -> String? {
-    guard let wifiAddress = getWiFiAddress() else { return nil }
-
-    let parts = wifiAddress.split(separator: ".").map { String($0) }
+func getLocalIPPrefix(for ip: String) -> String? {
+    let parts = ip.split(separator: ".").map { String($0) }
     guard parts.count == 4 else { return nil }
 
-    // Check if it’s 10.x.x.x
+    // Check for 10.x.x.x
     if parts[0] == "10" {
-        // prefix is e.g. "10.0.1."
         return "\(parts[0]).\(parts[1]).\(parts[2])."
     }
 
-    // Check if it’s 192.168.x.x
-    if parts[0] == "192" && parts[1] == "168" {
+    // Check for 192.168.x.x
+    if parts[0] == "192", parts[1] == "168" {
         return "192.168.\(parts[2])."
     }
 
-    // Check if it’s 172.(16-31).x.x
+    // Check for 172.(16-31).x.x
     if parts[0] == "172",
        let secondOctet = Int(parts[1]),
-       (16...31).contains(secondOctet)
-    {
+       (16...31).contains(secondOctet) {
         return "172.\(secondOctet).\(parts[2])."
     }
 
-    // If we get here, it’s some other IP range, e.g. public IP.
-    // Decide if you want to handle that differently or just return nil.
     return nil
 }
 
+/**
+ A convenience wrapper that returns the local IP prefix
+ by first obtaining the Wi-Fi address.
+ */
+func getLocalIPPrefix() -> String? {
+    guard let wifiAddress = getWiFiAddress() else { return nil }
+    return getLocalIPPrefix(for: wifiAddress)
+}

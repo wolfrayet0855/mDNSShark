@@ -6,8 +6,14 @@ import Combine
 class NetworkScanner: ObservableObject {
     @Published var devices: [Device] = []
     @Published var isScanning: Bool = false
+    @Published var progress: Double = 0.0
+    @Published var localIPAddress: String? = nil
 
     private let queue = DispatchQueue.global(qos: .background)
+    
+    // Total IPs to scan and counter for scanned IPs.
+    private var totalIPs: Int = 0
+    private var scannedIPs: Int = 0
 
     struct Device: Identifiable {
         let id = UUID()
@@ -15,21 +21,36 @@ class NetworkScanner: ObservableObject {
         let openPort: UInt16?
         let icmpResponded: Bool
 
-        var isActive: Bool {
-            (openPort != nil || icmpResponded)
+        /// Heuristically determine the device type icon.
+        /// - Parameter localIP: The IP address of the scanning device.
+        /// - Returns: An SF Symbol name.
+        func deviceTypeIcon(localIP: String?) -> String {
+            if let local = localIP, self.ipAddress == local {
+                return "iphone"
+            } else if let port = openPort, [22, 80, 443, 8080].contains(port) {
+                return "desktopcomputer"
+            } else {
+                return "questionmark.circle"
+            }
         }
     }
 
-    // List of common ports to check. Adjust as needed:
-    private let commonPorts: [UInt16] = [22, 80, 443, 8080]
+    // List of common ports to check. Adjust as needed.
+    private var commonPorts: [UInt16] { [22, 80, 443, 8080] }
 
     // MARK: - Public Start
     func scanNetwork() {
+        // Clear any previous results.
         devices.removeAll()
         isScanning = true
-        print("🔵 [Scanner] Starting multi-port scan...")
+        progress = 0.0
+        scannedIPs = 0
 
-        guard let prefix = getLocalIPPrefix() else {
+        // Get and store the local device’s IP address.
+        localIPAddress = getWiFiAddress()
+        guard let localIP = localIPAddress,
+              let prefix = getLocalIPPrefix(for: localIP)
+        else {
             print("⚠️ [Scanner] Could not detect local IP prefix. Aborting scan.")
             isScanning = false
             return
@@ -38,6 +59,7 @@ class NetworkScanner: ObservableObject {
         print("🌐 [Scanner] Detected prefix: \(prefix) => scanning .1 through .255 (common ports + optional ICMP)")
 
         let allIPs = (1...255).map { "\(prefix)\($0)" }
+        totalIPs = allIPs.count
 
         // Process addresses in chunks of 10 to avoid extreme concurrency.
         scanNextBatch(allIPs, batchSize: 10, startIndex: 0)
@@ -45,32 +67,28 @@ class NetworkScanner: ObservableObject {
 
     // MARK: - Batch Scanning
     private func scanNextBatch(_ ipList: [String], batchSize: Int, startIndex: Int) {
-        // If no more IPs to process, we’re done
+        // If no more IPs to process, we’re done.
         guard startIndex < ipList.count else {
             finishScanning()
             return
         }
 
-        // Create the next sub‐array
+        // Create the next sub‐array.
         let endIndex = min(startIndex + batchSize, ipList.count)
         let batch = ipList[startIndex..<endIndex]
 
-        // A dispatch group for this batch
+        // A dispatch group for this batch.
         let batchGroup = DispatchGroup()
 
         // For each IP in this batch:
         for ip in batch {
-            // 1) Enter the batch group once
             batchGroup.enter()
-
-            // 2) Scan the IP on the background queue
             scanOneHost(ip) {
-                // 3) On completion, leave the batch group
                 batchGroup.leave()
             }
         }
 
-        // Once the entire batch is done, move on to the next batch
+        // Once the entire batch is done, move on to the next batch.
         batchGroup.notify(queue: queue) {
             self.scanNextBatch(ipList, batchSize: batchSize, startIndex: endIndex)
         }
@@ -83,22 +101,18 @@ class NetworkScanner: ObservableObject {
         }
     }
 
-    // MARK: - Single Host
+    // MARK: - Single Host Scan
     /**
-     For one IP, we:
-     - open a small `portGroup` for the ports
-     - do `tcpProbe` for each port, collecting the first open port if any
-     - once ports are done, do an ICMP ping
-     - then call the final completion
-    */
+     For one IP address, we:
+     - Check several TCP ports.
+     - Run an ICMP ping.
+     - Then, if either check indicates an active device, we add it to the devices list.
+     */
     private func scanOneHost(_ ip: String, completion: @escaping () -> Void) {
-        // Record the first open port found
         var foundOpenPort: UInt16? = nil
-
-        // A group for the ports
         let portGroup = DispatchGroup()
 
-        // Start port checks
+        // Check each port.
         for port in commonPorts {
             portGroup.enter()
             tcpProbeIPAddress(ip, port: port) { didConnect in
@@ -109,11 +123,11 @@ class NetworkScanner: ObservableObject {
             }
         }
 
-        // Once all ports are tested, do an ICMP ping
+        // Once all port checks complete, perform the ICMP ping.
         portGroup.notify(queue: queue) {
             self.pingIPAddressICMP(ip) { didPing in
                 DispatchQueue.main.async {
-                    // If either a port was open or ICMP replied, we add it to devices
+                    // If either check succeeds, add the device.
                     if foundOpenPort != nil || didPing {
                         let dev = Device(ipAddress: ip,
                                          openPort: foundOpenPort,
@@ -123,14 +137,17 @@ class NetworkScanner: ObservableObject {
                     } else {
                         print("   → [Scan] \(ip): no ports open, no ping => Inactive (not added)")
                     }
-                    // Signal back that we’re done scanning this IP
+                    
+                    // Update progress.
+                    self.scannedIPs += 1
+                    self.progress = Double(self.scannedIPs) / Double(self.totalIPs)
                     completion()
                 }
             }
         }
     }
 
-    // MARK: - TCP
+    // MARK: - TCP Probe
     private func tcpProbeIPAddress(_ ip: String, port: UInt16, completion: @escaping (Bool) -> Void) {
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
             completion(false)
@@ -139,7 +156,7 @@ class NetworkScanner: ObservableObject {
         let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(ip), port: nwPort)
         let conn = NWConnection(to: endpoint, using: .tcp)
 
-        // Ensure completion is only called once.
+        // Ensure the completion handler is only called once.
         var didComplete = false
         let completeOnce: (Bool) -> Void = { success in
             if !didComplete {
@@ -172,7 +189,7 @@ class NetworkScanner: ObservableObject {
         }
     }
 
-    // MARK: - ICMP
+    // MARK: - ICMP Ping
     private func pingIPAddressICMP(_ ip: String, completion: @escaping (Bool) -> Void) {
         let config = PingConfiguration(
             pInterval: 1.0,
@@ -185,4 +202,3 @@ class NetworkScanner: ObservableObject {
         }
     }
 }
-
