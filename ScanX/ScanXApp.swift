@@ -4,7 +4,6 @@
 //
 //  Created by user on 1/24/25.
 //
-
 import SwiftUI
 
 @main

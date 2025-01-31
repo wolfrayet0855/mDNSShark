@@ -6,7 +6,6 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Scan Button
                 Button(action: {
                     print("🔵 [UI] 'Scan Network' button tapped")
                     scanner.scanNetwork()
@@ -32,9 +31,8 @@ struct ContentView: View {
                 .padding(.horizontal)
                 .disabled(scanner.isScanning)
 
-                // Device List
                 if scanner.devices.isEmpty {
-                    Text("No devices found. Tap 'Scan Network' to start.")
+                    Text("No active devices found. Tap 'Scan Network' to start.")
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
                         .padding()
@@ -43,11 +41,15 @@ struct ContentView: View {
                         HStack {
                             Text(device.ipAddress)
                             Spacer()
-                            Text(device.isActive ? "Active" : "Inactive")
-                                .foregroundColor(device.isActive ? .green : .red)
+                            if let port = device.openPort {
+                                Text("Port \(port) open")
+                                    .foregroundColor(.green)
+                            } else if device.icmpResponded {
+                                Text("ICMP ping")
+                                    .foregroundColor(.blue)
+                            }
                         }
                     }
-                    .listStyle(PlainListStyle())
                 }
             }
             .padding()
@@ -55,4 +57,3 @@ struct ContentView: View {
         }
     }
 }
-
