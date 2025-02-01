@@ -5,61 +5,103 @@ struct ContentView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
+            VStack {
                 Button(action: {
                     print("🔵 [UI] 'Scan Network' button tapped")
                     scanner.scanNetwork()
                 }) {
-                    if scanner.isScanning {
-                        Text("Scanning...")
-                            .font(.headline)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    } else {
-                        Text("Scan Network")
-                            .font(.headline)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
+                    Text(scanner.isScanning ? "Scanning..." : "Scan Network")
+                        .font(.headline)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(scanner.isScanning ? Color.gray : Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
                 }
-                .padding(.horizontal)
-                .disabled(scanner.isScanning)
+                .padding()
 
                 if scanner.isScanning {
-                    ProgressView()
-                        .progressViewStyle(LinearProgressViewStyle())
-                        .padding(.horizontal)
-                }
-
-                if scanner.devices.isEmpty && !scanner.isScanning {
-                    Text("No active devices found. Tap 'Scan Network' to start.")
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .padding()
-                } else if !scanner.devices.isEmpty {
-                    List(scanner.devices) { device in
-                        HStack(spacing: 12) {
-                            Image(systemName: device.deviceTypeIcon())
-                                .foregroundColor(.accentColor)
-                                .imageScale(.large)
-                            Text(device.identifier)
-                                .font(.headline)
-                        }
-                        .padding(.vertical, 4)
-                    }
+                    ProgressView().padding()
                 }
                 
+                if scanner.devices.isEmpty && !scanner.isScanning {
+                    Text("No devices found. Tap 'Scan Network' to start.")
+                        .foregroundColor(.gray)
+                        .padding()
+                } else {
+                    List(scanner.devices) { device in
+                        NavigationLink(destination: DeviceDetailView(device: device)) {
+                            DeviceRow(device: device)
+                        }
+                    }
+                }
                 Spacer()
             }
-            .padding()
             .navigationTitle("Network Scanner")
         }
+    }
+}
+
+struct DeviceRow: View {
+    @ObservedObject var device: NetworkScanner.Device
+    var body: some View {
+        HStack {
+            Image(systemName: device.deviceTypeIcon())
+                .foregroundColor(.accentColor)
+                .imageScale(.large)
+            VStack(alignment: .leading) {
+                Text(device.identifier)
+                    .font(.headline)
+                Text(device.serviceType)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct DeviceDetailView: View {
+    @ObservedObject var device: NetworkScanner.Device
+    var body: some View {
+        Form {
+            Section(header: Text("Basic Info")) {
+                HStack {
+                    Text("Name:")
+                    Spacer()
+                    Text(device.identifier)
+                }
+                HStack {
+                    Text("Service Type:")
+                    Spacer()
+                    Text(device.serviceType)
+                }
+                HStack {
+                    Text("Domain:")
+                    Spacer()
+                    Text(device.serviceDomain)
+                }
+            }
+            Section(header: Text("Resolved Info")) {
+                HStack {
+                    Text("IP Address:")
+                    Spacer()
+                    Text(device.resolvedIPAddress ?? "Not available")
+                }
+                HStack {
+                    Text("Friendly Name:")
+                    Spacer()
+                    Text(device.friendlyName ?? "Not available")
+                }
+                HStack {
+                    Text("Model:")
+                    Spacer()
+                    Text(device.model ?? "Not available")
+                }
+            }
+        }
+        .navigationTitle(device.identifier)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
