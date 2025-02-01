@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		9A048D8B2D45AB47000B42BF /* SwiftPing in Frameworks */ = {isa = PBXBuildFile; productRef = 9A048D8A2D45AB47000B42BF /* SwiftPing */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
 		9A1C9E892D443D5300643122 /* ScanX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScanX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -40,7 +36,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9A048D8B2D45AB47000B42BF /* SwiftPing in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,7 +78,6 @@
 			);
 			name = ScanX;
 			packageProductDependencies = (
-				9A048D8A2D45AB47000B42BF /* SwiftPing */,
 			);
 			productName = ScanX;
 			productReference = 9A1C9E892D443D5300643122 /* ScanX.app */;
@@ -357,13 +351,6 @@
 			relativePath = ../SwiftPing;
 		};
 /* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		9A048D8A2D45AB47000B42BF /* SwiftPing */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwiftPing;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9A1C9E812D443D5300643122 /* Project object */;
 }
