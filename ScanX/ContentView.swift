@@ -31,9 +31,8 @@ struct ContentView: View {
                 .padding(.horizontal)
                 .disabled(scanner.isScanning)
 
-                // Show progress bar only when scanning
                 if scanner.isScanning {
-                    ProgressView(value: scanner.progress)
+                    ProgressView()
                         .progressViewStyle(LinearProgressViewStyle())
                         .padding(.horizontal)
                 }
@@ -46,21 +45,11 @@ struct ContentView: View {
                 } else if !scanner.devices.isEmpty {
                     List(scanner.devices) { device in
                         HStack(spacing: 12) {
-                            Image(systemName: device.deviceTypeIcon(localIP: scanner.localIPAddress))
+                            Image(systemName: device.deviceTypeIcon())
                                 .foregroundColor(.accentColor)
                                 .imageScale(.large)
-                            
-                            VStack(alignment: .leading) {
-                                Text(device.ipAddress)
-                                    .font(.headline)
-                                if let port = device.openPort {
-                                    Text("Port \(port) open")
-                                        .foregroundColor(.green)
-                                } else if device.icmpResponded {
-                                    Text("ICMP ping")
-                                        .foregroundColor(.blue)
-                                }
-                            }
+                            Text(device.identifier)
+                                .font(.headline)
                         }
                         .padding(.vertical, 4)
                     }
