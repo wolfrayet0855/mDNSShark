@@ -76,3 +76,4 @@ func getLocalIPPrefix() -> String? {
     guard let wifiAddress = getWiFiAddress() else { return nil }
     return getLocalIPPrefix(for: wifiAddress)
 }
+

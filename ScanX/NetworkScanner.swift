@@ -55,7 +55,8 @@ class NetworkScanner: ObservableObject {
             isScanning = false
             return
         }
-
+        
+        print("🌐 [Scanner] Local IP: \(localIP)")
         print("🌐 [Scanner] Detected prefix: \(prefix) => scanning .1 through .255 (common ports + optional ICMP)")
 
         let allIPs = (1...255).map { "\(prefix)\($0)" }
