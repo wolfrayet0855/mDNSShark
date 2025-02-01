@@ -1,13 +1,21 @@
 import Foundation
 import Network
 import Combine
+import CoreFoundation
 
 class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     @Published var devices: [Device] = []
     @Published var isScanning: Bool = false
 
-    // Array of Bonjour service types to scan for.
-    private let serviceTypes: [String] = ["_http._tcp", "_ipp._tcp", "_raop._tcp"]
+    // Updated list: Added _daap._tcp for music sharing, _airdrop._tcp for Airdrop, and _bluetoothd2._tcp for Bluetooth-related services.
+    private let serviceTypes: [String] = [
+        "_http._tcp",
+        "_ipp._tcp",
+        "_raop._tcp",
+        "_daap._tcp",
+        "_airdrop._tcp",
+        "_bluetoothd2._tcp"
+    ]
     
     // Array to hold NWBrowser instances for each service type.
     private var bonjourBrowsers: [NWBrowser] = []
@@ -144,13 +152,29 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
                             print("🔎 [Bonjour] Resolved \(sender.name) to IP: \(ip)")
                         }
                     }
+                    // Perform reverse DNS lookup if TXT record did not yield a friendly name.
+                    self.performReverseDNSLookup(for: ip) { reverseName in
+                        if let reverseName = reverseName, !reverseName.isEmpty {
+                            DispatchQueue.main.async {
+                                if let device = self.devices.first(where: { $0.id == deviceID }) {
+                                    if device.friendlyName == nil || device.friendlyName?.isEmpty == true {
+                                        device.friendlyName = reverseName
+                                        print("🔎 [Bonjour] Reverse DNS lookup resolved \(sender.name) to hostname: \(reverseName)")
+                                    }
+                                }
+                            }
+                        }
+                    }
                     break
                 }
             }
         }
         if let txtData = sender.txtRecordData() {
             let txtDict = NetService.dictionary(fromTXTRecord: txtData)
-            if let friendlyData = txtDict["fn"], let friendly = String(data: friendlyData, encoding: .utf8) {
+            // Try the "fn" key; if unavailable, fall back to "n"
+            if let friendlyData = txtDict["fn"] ?? txtDict["n"],
+               let friendly = String(data: friendlyData, encoding: .utf8),
+               !friendly.isEmpty {
                 DispatchQueue.main.async {
                     if let device = self.devices.first(where: { $0.id == deviceID }) {
                         device.friendlyName = friendly
@@ -171,6 +195,43 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     
     func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
         print("🔎 [Bonjour] Failed to resolve \(sender.name) with error: \(errorDict)")
+    }
+    
+    // MARK: - Reverse DNS Lookup
+    
+    /// Performs a reverse DNS lookup using CFHost on the given IP address.
+    private func performReverseDNSLookup(for ip: String, completion: @escaping (String?) -> Void) {
+        DispatchQueue.global(qos: .background).async {
+            // Prepare a sockaddr_in structure for the IPv4 address.
+            var sin = sockaddr_in()
+            sin.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+            sin.sin_family = sa_family_t(AF_INET)
+            let result = ip.withCString { cstring in
+                inet_pton(AF_INET, cstring, &sin.sin_addr)
+            }
+            guard result == 1 else {
+                completion(nil)
+                return
+            }
+            
+            // Create CFData from the sockaddr_in structure.
+            let data = Data(bytes: &sin, count: Int(sin.sin_len))
+            // CFHostCreateWithAddress returns a non-optional Unmanaged<CFHost>
+            let unmanagedHost = CFHostCreateWithAddress(nil, data as CFData)
+            let hostRef = unmanagedHost.takeRetainedValue()
+            
+            var resolved: DarwinBoolean = false
+            if CFHostStartInfoResolution(hostRef, .names, nil) {
+                if let namesUnmanaged = CFHostGetNames(hostRef, &resolved) {
+                    let names = namesUnmanaged.takeUnretainedValue() as NSArray as? [String]
+                    if let names = names, !names.isEmpty {
+                        completion(names.first)
+                        return
+                    }
+                }
+            }
+            completion(nil)
+        }
     }
     
     // MARK: - Helper Function

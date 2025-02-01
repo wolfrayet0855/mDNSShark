@@ -9,6 +9,10 @@
 		<string>_services._dns-sd._udp</string>
 		<string> _ipp._tcp</string>
 		<string>_raop._tcp</string>
+		<string>_airdrop._tcp</string>
+		<string>_apple-mobdev2._tcp</string>
+		<string>_daap._tcp</string>
+		<string>_bluetoothd2._tcp&quot;</string>
 	</array>
 </dict>
 </plist>
