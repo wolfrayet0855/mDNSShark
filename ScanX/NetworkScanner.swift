@@ -14,6 +14,9 @@ class NetworkScanner: ObservableObject {
     // Total IPs to scan and counter for scanned IPs.
     private var totalIPs: Int = 0
     private var scannedIPs: Int = 0
+    
+    // NWBrowser for Bonjour-based scanning
+    private var bonjourBrowser: NWBrowser? = nil
 
     struct Device: Identifiable {
         let id = UUID()
@@ -99,6 +102,17 @@ class NetworkScanner: ObservableObject {
         DispatchQueue.main.async {
             self.isScanning = false
             print("✅ [Scanner] Finished scanning all IPs.")
+            // If no devices were found using TCP/ICMP, try the alternative Bonjour scan.
+            if self.devices.isEmpty {
+                print("🔎 [Scanner] No devices found via TCP/ICMP; starting Bonjour scan as alternative...")
+                self.scanNetworkAlternative()
+                // Stop the Bonjour browser after 5 seconds (for testing purposes).
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    self.bonjourBrowser?.cancel()
+                    self.bonjourBrowser = nil
+                    print("🔎 [Scanner] Bonjour scan ended.")
+                }
+            }
         }
     }
 
@@ -202,4 +216,43 @@ class NetworkScanner: ObservableObject {
             completion(success)
         }
     }
+    
+    // MARK: - Alternative Method: Bonjour Scan
+    /**
+     If no devices respond to TCP or ICMP, we can try to discover Bonjour-advertised services.
+     In this example, we use a specific Bonjour service type.
+     Adjust the service type (e.g. "_http._tcp") as needed if you expect specific services.
+     */
+    private func scanNetworkAlternative() {
+        // Use a specific Bonjour service type.
+        let bonjourDescriptor = NWBrowser.Descriptor.bonjour(type: "_http._tcp", domain: nil)
+        // Use TCP parameters for browsing.
+        let parameters = NWParameters.tcp
+        bonjourBrowser = NWBrowser(for: bonjourDescriptor, using: parameters)
+        
+        bonjourBrowser?.stateUpdateHandler = { state in
+            print("🔎 [Bonjour] Browser state: \(state)")
+        }
+        
+        bonjourBrowser?.browseResultsChangedHandler = { results, changes in
+            for result in results {
+                switch result.endpoint {
+                case .service(let name, let domain, let type, _):
+                    DispatchQueue.main.async {
+                        // Use the service name as a unique identifier.
+                        if !self.devices.contains(where: { $0.ipAddress == name }) {
+                            let dev = Device(ipAddress: name, openPort: nil, icmpResponded: false)
+                            self.devices.append(dev)
+                            print("🔎 [Bonjour] Discovered service: \(name) in domain: \(domain) of type: \(type)")
+                        }
+                    }
+                default:
+                    break
+                }
+            }
+        }
+        
+        bonjourBrowser?.start(queue: queue)
+    }
 }
+
