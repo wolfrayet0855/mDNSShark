@@ -1,5 +1,56 @@
+
 import SwiftUI
 
+// MARK: - ContentView
+struct ContentView: View {
+    @StateObject private var scanner = NetworkScanner()
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                Button(action: {
+                    scanner.scanNetwork()
+                }) {
+                    Text(scanner.isScanning ? "Scanning..." : "Scan Network")
+                        .font(.headline)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(scanner.isScanning ? Color.gray : Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding()
+                
+                if scanner.isScanning {
+                    ProgressView()
+                        .padding()
+                }
+                
+                if scanner.devices.isEmpty && !scanner.isScanning {
+                    Text("No devices found. Tap 'Scan Network' to start.")
+                        .foregroundColor(.gray)
+                        .padding()
+                } else {
+                    List(scanner.devices) { device in
+                        NavigationLink(destination: DeviceDetailView(device: device)) {
+                            VStack(alignment: .leading) {
+                                Text(device.identifier)
+                                    .font(.headline)
+                                Text(device.serviceType)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+                Spacer()
+            }
+            .navigationTitle("Network Scanner")
+        }
+    }
+}
+
+// MARK: - DeviceDetailView
 struct DeviceDetailView: View {
     @ObservedObject var device: NetworkScanner.Device
 
@@ -74,5 +125,12 @@ struct DeviceDetailView: View {
         }
         .navigationTitle(device.identifier)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Preview
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
     }
 }
