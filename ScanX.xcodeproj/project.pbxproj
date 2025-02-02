@@ -7,10 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		9A8F66CF2D4EEF4B00A033B5 /* libdns_services.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9A8F66CE2D4EEF4B00A033B5 /* libdns_services.tbd */; };
 		9A8F66FF2D4F069100A033B5 /* ScanX-Bridging-Header.m in Sources */ = {isa = PBXBuildFile; fileRef = 9A8F66FE2D4F069100A033B5 /* ScanX-Bridging-Header.m */; };
 		9AC2AB6C2D4F1F3B004A9F66 /* libmdns.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9AC2AB6B2D4F1F3B004A9F66 /* libmdns.tbd */; };
+		9AC2AB802D4F2285004A9F66 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9AC2AB7E2D4F2024004A9F66 /* CFNetwork.framework */; };
+		9AC2AB812D4F2285004A9F66 /* CFNetwork.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9AC2AB7E2D4F2024004A9F66 /* CFNetwork.framework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9AC2AB822D4F2285004A9F66 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				9AC2AB812D4F2285004A9F66 /* CFNetwork.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		9A1C9E892D443D5300643122 /* ScanX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScanX.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -18,6 +33,7 @@
 		9A8F66FE2D4F069100A033B5 /* ScanX-Bridging-Header.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ScanX-Bridging-Header.m"; sourceTree = "<group>"; };
 		9A8F67042D4F076500A033B5 /* ScanX-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ScanX-Bridging-Header.h"; sourceTree = "<group>"; };
 		9AC2AB6B2D4F1F3B004A9F66 /* libmdns.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libmdns.tbd; path = usr/lib/libmdns.tbd; sourceTree = SDKROOT; };
+		9AC2AB7E2D4F2024004A9F66 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -46,8 +62,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9AC2AB802D4F2285004A9F66 /* CFNetwork.framework in Frameworks */,
 				9AC2AB6C2D4F1F3B004A9F66 /* libmdns.tbd in Frameworks */,
-				9A8F66CF2D4EEF4B00A033B5 /* libdns_services.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +90,7 @@
 		9A8F66CD2D4EEED100A033B5 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				9AC2AB7E2D4F2024004A9F66 /* CFNetwork.framework */,
 				9AC2AB6B2D4F1F3B004A9F66 /* libmdns.tbd */,
 				9A8F66CE2D4EEF4B00A033B5 /* libdns_services.tbd */,
 				9A8F66FE2D4F069100A033B5 /* ScanX-Bridging-Header.m */,
@@ -92,6 +109,7 @@
 				9A1C9E852D443D5300643122 /* Sources */,
 				9A1C9E862D443D5300643122 /* Frameworks */,
 				9A1C9E872D443D5300643122 /* Resources */,
+				9AC2AB822D4F2285004A9F66 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
