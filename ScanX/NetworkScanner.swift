@@ -10,21 +10,48 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     @Published var devices: [Device] = []
     @Published var isScanning: Bool = false
 
-    // Service types to be scanned.
+    // Updated service types list: removed duplicates and fixed typos.
+    // Updated service types list: includes both your existing services and additional service types.
     private let serviceTypes: [String] = [
         "_http._tcp",
         "_ipp._tcp",
         "_raop._tcp",
         "_daap._tcp",
         "_airdrop._tcp",
-        "_bluetoothd2._tcp"
+        "_bluetoothd2._tcp",
+        "_ftp._tcp",
+        "_services._dns-sd._udp",
+        "_apple-mobdev2._tcp",
+        "_afpovertcp._tcp",
+        "_ssh._tcp",
+        "_smb._tcp",
+        "_airplay._tcp",
+        "_device-info._tcp",
+        "_printer._tcp",
+        // Additional Service Types
+        "_https._tcp",
+        "_rfb._tcp",
+        "_googlecast._tcp",
+        "_dacp._tcp",
+        "_workstation._tcp",
+        "_time-machine._tcp",
+        "_adisk._tcp",
+        "_hap._tcp",
+        "_presence._tcp",
+        "_btsync._tcp",
+        "_mqtt._tcp",
+        "_coap._udp"
     ]
+
+    
+    // Dedicated queue for Bonjour browser tasks.
+    private let bonjourQueue = DispatchQueue(label: "com.example.ScanX.bonjourQueue")
     
     private var bonjourBrowsers: [NWBrowser] = []
     private var serviceToDeviceId: [ObjectIdentifier: UUID] = [:]
     
     // Scan duration in seconds.
-    private let scanDuration: TimeInterval = 15.0
+    private let scanDuration: TimeInterval = 25.0
     private let logger = Logger(subsystem: "com.example.ScanX", category: "NetworkScanner")
     
     // Instance of the local subnet scanner.
@@ -64,7 +91,6 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         devices.removeAll()
         isScanning = true
         serviceToDeviceId.removeAll()
-        // Use explicit self when referencing instance properties in closures.
         logger.info("Starting network scan for service types: \(self.serviceTypes)")
         
         // Start Bonjour scanning.
@@ -104,14 +130,14 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     // MARK: - Bonjour Scanning
     private func createAndStartBrowser(for serviceType: String) {
         let descriptor = NWBrowser.Descriptor.bonjour(type: serviceType, domain: nil)
-        let parameters: NWParameters = .tcp
+        // Choose network parameters based on service type:
+        // If the service type indicates UDP, use UDP parameters; otherwise, use TCP.
+        let parameters: NWParameters = serviceType.contains("_udp") ? .udp : .tcp
         let browser = NWBrowser(for: descriptor, using: parameters)
-        let capturedServiceType: String = serviceType  // capture explicitly to remove ambiguity
+        let capturedServiceType: String = serviceType  // capture explicitly
         
-        // Explicitly annotate the closure parameter.
         browser.stateUpdateHandler = { [weak self] (state: NWBrowser.State) -> Void in
             guard let self = self else { return }
-            // Use String(describing:) to be explicit.
             self.logger.info("Bonjour browser for \(capturedServiceType) state: \(String(describing: state))")
             if case .failed(let error) = state {
                 self.logger.error("Bonjour browser for \(capturedServiceType) failed: \(error.localizedDescription)")
@@ -121,13 +147,13 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
             }
         }
         
-        // Delegate browse result processing to a dedicated helper.
         browser.browseResultsChangedHandler = { [weak self] (results: Set<NWBrowser.Result>, changes: Set<NWBrowser.Result.Change>) -> Void in
             guard let self = self else { return }
             self.processBrowseResults(results)
         }
         
-        browser.start(queue: DispatchQueue.global(qos: .background))
+        // Start the browser on the dedicated queue.
+        browser.start(queue: bonjourQueue)
         bonjourBrowsers.append(browser)
     }
     

@@ -4,30 +4,29 @@ import SwiftUI
 struct DeviceDetailView: View {
     @ObservedObject var device: NetworkScanner.Device
     
-    /// Extract the part before '@' in `device.serviceName` if present.
+    /// Attempt to parse the portion before '@' as a MAC-like address.
     private var macLikeAddress: String? {
         let parts = device.serviceName.split(separator: "@", maxSplits: 1)
         guard parts.count == 2 else { return nil }
-        return String(parts[0])
+        return String(parts[0]) // (Optional) Could also add a regex or hex check here.
     }
     
-    /// Extract the IPv6 link-local portion (between '@' and first '-') if present.
+    /// Attempt to parse the portion after '@' as a true IPv6 link-local address
+    /// only if it starts with "fe80::" (case-insensitive).
     private var ipv6LinkLocal: String? {
         let parts = device.serviceName.split(separator: "@", maxSplits: 1)
         guard parts.count == 2 else { return nil }
-        let afterAt = parts[1]
-        // If there is a dash, everything before that is the link-local address.
-        if let dashRange = afterAt.range(of: "-") {
-            return String(afterAt[..<dashRange.lowerBound])
-        } else {
-            // Otherwise, return the entire substring after '@'
-            return String(afterAt)
+        let remainder = parts[1]
+        // Stricter check: ensure it starts with "fe80::"
+        guard remainder.lowercased().hasPrefix("fe80::") else {
+            return nil
         }
+        return String(remainder)
     }
 
     var body: some View {
         Form {
-            Section(header: Text("Basic Info")) {
+            Section(header: Text("BASIC INFO")) {
                 HStack {
                     Text("MAC-Like Address:")
                     Spacer()

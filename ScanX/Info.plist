@@ -13,6 +13,26 @@
 		<string>_apple-mobdev2._tcp</string>
 		<string>_daap._tcp</string>
 		<string>_bluetoothd2._tcp&quot;</string>
+		<string>_afpovertcp._tcp</string>
+		<string>_ssh._tcp</string>
+		<string>_ftp._tcp</string>
+		<string>_smb._tcp</string>
+		<string>_airplay._tcp</string>
+		<string>_device-info._tcp</string>
+		<string>_ipp._tcp</string>
+		<string>_printer._tcp</string>
+		<string>_https._tcp</string>
+		<string>_rfb._tcp</string>
+		<string>_googlecast._tcp</string>
+		<string>_dacp._tcp</string>
+		<string>_workstation._tcp</string>
+		<string>_time-machine._tcp</string>
+		<string>_adisk._tcp</string>
+		<string>_hap._tcp</string>
+		<string>_presence._tcp</string>
+		<string>_btsync._tcp</string>
+		<string>_mqtt._tcp</string>
+		<string>_coap._udp</string>
 	</array>
 </dict>
 </plist>

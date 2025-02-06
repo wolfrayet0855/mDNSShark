@@ -4,6 +4,37 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var scanner = NetworkScanner()
     
+    // A mapping from service types to their definitions (summaries) for display in the list view.
+    private let serviceTypeSummaries: [String: String] = [
+        "_http._tcp": "HTTP web service. Often used for websites and APIs.",
+        "_ipp._tcp": "Internet Printing Protocol. Used by network printers.",
+        "_raop._tcp": "AirPlay audio service (Remote Audio Output Protocol).",
+        "_daap._tcp": "Digital Audio Access Protocol for sharing music libraries.",
+        "_airdrop._tcp": "AirDrop file sharing service for Apple devices.",
+        "_bluetoothd2._tcp": "Bluetooth-related service for device connectivity.",
+        "_ftp._tcp": "File Transfer Protocol for transferring files.",
+        "_services._dns-sd._udp": "DNS-SD meta-service. Enumerates other Bonjour services.",
+        "_apple-mobdev2._tcp": "Used by Apple devices (e.g., iOS) for device discovery.",
+        "_afpovertcp._tcp": "Apple Filing Protocol over TCP for file sharing.",
+        "_ssh._tcp": "Secure Shell (SSH) service.",
+        "_smb._tcp": "SMB file sharing service (Windows file sharing).",
+        "_airplay._tcp": "AirPlay streaming service for audio or video.",
+        "_device-info._tcp": "Provides basic device information.",
+        "_printer._tcp": "Generic printer service.",
+        "_https._tcp": "Secure HTTP web service (HTTPS).",
+        "_rfb._tcp": "Remote Frame Buffer protocol (VNC screen sharing).",
+        "_googlecast._tcp": "Google Cast/Chromecast service.",
+        "_dacp._tcp": "Digital Audio Control Protocol.",
+        "_workstation._tcp": "Indicates a SMB workstation or host service.",
+        "_time-machine._tcp": "Apple Time Machine backup service.",
+        "_adisk._tcp": "Apple AirDisk advertising for Time Capsule or disk sharing.",
+        "_hap._tcp": "HomeKit Accessory Protocol.",
+        "_presence._tcp": "Presence detection or status service.",
+        "_btsync._tcp": "Resilio/Bittorrent Sync service.",
+        "_mqtt._tcp": "MQTT message broker or client service.",
+        "_coap._udp": "Constrained Application Protocol over UDP."
+    ]
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -31,6 +62,7 @@ struct ContentView: View {
                         .padding()
                 } else {
                     List(scanner.devices) { device in
+                        // Display the device name, service type, and a one-line summary.
                         NavigationLink(destination: DeviceDetailView(device: device)) {
                             VStack(alignment: .leading) {
                                 Text(device.identifier)
@@ -38,6 +70,9 @@ struct ContentView: View {
                                 Text(device.serviceType)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                Text(serviceTypeSummaries[device.serviceType] ?? "No summary available.")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
                             }
                         }
                     }
@@ -46,84 +81,6 @@ struct ContentView: View {
             }
             .navigationTitle("Network Scanner")
         }
-    }
-}
-
-// MARK: - DeviceDetailView
-struct DeviceDetailView: View {
-    @ObservedObject var device: NetworkScanner.Device
-
-    // A mapping from service types to their definitions.
-    private let serviceTypeDefinitions: [String: String] = [
-        "_http._tcp": "HTTP web service. Often used for websites and APIs.",
-        "_ipp._tcp": "Internet Printing Protocol. Used by network printers.",
-        "_raop._tcp": "AirPlay audio service (Remote Audio Output Protocol) for streaming audio.",
-        "_daap._tcp": "Digital Audio Access Protocol for sharing music libraries.",
-        "_airdrop._tcp": "AirDrop file sharing service for Apple devices.",
-        "_bluetoothd2._tcp": "Bluetooth related service for device connectivity."
-    ]
-    
-    var body: some View {
-        Form {
-            Section(header: Text("Basic Info")) {
-                HStack {
-                    Text("Name:")
-                    Spacer()
-                    Text(device.identifier)
-                }
-                HStack {
-                    Text("Service Type:")
-                    Spacer()
-                    Text(device.serviceType)
-                    // Info icon with a context menu for service definition.
-                    Image(systemName: "questionmark.circle")
-                        .foregroundColor(.blue)
-                        .contextMenu {
-                            Text(serviceTypeDefinitions[device.serviceType] ?? "No definition available.")
-                        }
-                }
-                HStack {
-                    Text("Domain:")
-                    Spacer()
-                    Text(device.serviceDomain)
-                }
-            }
-            Section(header: Text("Resolved Info")) {
-                HStack {
-                    Text("IP Address:")
-                    Spacer()
-                    Text(device.resolvedIPAddress ?? "Not available")
-                }
-                HStack {
-                    Text("Port:")
-                    Spacer()
-                    Text(device.port != nil ? "\(device.port!)" : "Not available")
-                }
-                HStack {
-                    Text("Friendly Name:")
-                    Spacer()
-                    Text(device.friendlyName ?? "Not available")
-                }
-                HStack {
-                    Text("Model:")
-                    Spacer()
-                    Text(device.model ?? "Not available")
-                }
-            }
-            if let txtRecords = device.txtRecords, !txtRecords.isEmpty {
-                Section(header: Text("TXT Records")) {
-                    ForEach(txtRecords.keys.sorted(), id: \.self) { key in
-                        HStack {
-                            Text("\(key):")
-                            Spacer()
-                            Text(txtRecords[key] ?? "")
-                        }
-                    }
-                }
-            }
-        }
-        .navigationTitle(device.identifier)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
