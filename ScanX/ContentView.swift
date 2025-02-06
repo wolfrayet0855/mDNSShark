@@ -11,7 +11,7 @@ struct ContentView: View {
         "_https._tcp": "Secure HTTP (HTTPS) service.",
         "_ftp._tcp": "File Transfer Protocol for transferring files.",
         "_webdav._tcp": "WebDAV protocol for remote file management.",
-
+        
         // Apple / AirPlay / Airdrop
         "_airplay._tcp": "AirPlay streaming for audio/video.",
         "_airdrop._tcp": "AirDrop file sharing for Apple devices.",
@@ -24,25 +24,25 @@ struct ContentView: View {
         "_dacp._tcp": "Apple remote control protocol (iTunes/Apple TV).",
         "_raop._tcp": "AirPlay audio (Remote Audio Output Protocol).",
         "_device-info._tcp": "Basic Apple device info (model/version).",
-
+        
         // Printing / Scanning
         "_ipp._tcp": "Internet Printing Protocol for printers.",
         "_ipps._tcp": "Secure IPP (Internet Printing Protocol).",
         "_printer._tcp": "Generic printer service.",
         "_pdl-datastream._tcp": "HP Printer PDL data stream.",
         "_scanner._tcp": "Network scanner service.",
-
+        
         // Remote Access / OS
         "_ssh._tcp": "SSH remote shell access.",
         "_telnet._tcp": "Telnet (insecure) remote shell service.",
         "_rfb._tcp": "VNC (Remote Frame Buffer) screen sharing.",
         "_remotemanagement._tcp": "Apple Remote Desktop management service.",
-
+        
         // SMB / Windows / NFS
         "_smb._tcp": "Windows SMB file sharing service.",
         "_workstation._tcp": "SMB workstation or host service.",
         "_nfs._tcp": "Network File System (NFS) sharing.",
-
+        
         // Sync & Tools
         "_btsync._tcp": "Resilio/Bittorrent Sync service.",
         "_distcc._tcp": "Distributed C/C++ compilation service.",
@@ -52,7 +52,7 @@ struct ContentView: View {
         "_services._dns-sd._udp": "DNS-SD meta-service enumerates other Bonjour services.",
         "_time._udp": "Network time service.",
         "_timedate._udp": "Date/time sync service.",
-
+        
         // Streaming & IoT
         "_googlecast._tcp": "Google Cast/Chromecast streaming device.",
         "_spotify-connect._tcp": "Spotify Connect streaming or device control.",
@@ -61,12 +61,19 @@ struct ContentView: View {
         "_presence._tcp": "Presence detection or status service.",
         "_mqtt._tcp": "MQTT message broker or client service.",
         "_coap._udp": "Constrained Application Protocol over UDP.",
-
+        
         // Catch-all
         "_tcpchat._tcp": "Example custom TCP chat or messaging service.",
         
-        // If not found in the dictionary, fallback:
-        // "No summary available."
+        // Newly Added Services
+        "_touch-able._tcp": "Interactive touch-based service for smart devices. (Newly added)",
+        "_airpod._tcp": "Service related to AirPods connectivity and discovery. (Newly added)",
+        "_teamviewer._tcp": "TeamViewer remote access service for remote support. (Newly added)",
+        "_vnc._tcp": "VNC remote desktop service (alternative to _rfb._tcp). (Newly added)",
+        "_sftp-ssh._tcp": "Secure File Transfer Protocol over SSH. (Newly added)",
+        "_octoprint._tcp": "Service for 3D printer management (OctoPrint). (Newly added)",
+        "_xbmc-jsonrpc._tcp": "JSON-RPC API for XBMC/Kodi media centers. (Newly added)",
+        "_plexmediasvr._tcp": "Plex Media Server for streaming multimedia content. (Newly added)"
     ]
     
     var body: some View {

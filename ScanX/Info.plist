@@ -115,6 +115,14 @@ _http._tcp&quot;</string>
 		<string>_tcpchat._tcp</string>
 		<string>_raop._tcp</string>
 		<string>_acp-sync._tcp</string>
+		<string>_touch-able._tcp</string>
+		<string>_airpod._tcp</string>
+		<string>_teamviewer._tcp</string>
+		<string>_vnc._tcp</string>
+		<string>_sftp-ssh._tcp</string>
+		<string>_octoprint._tcp</string>
+		<string>_xbmc-jsonrpc._tcp</string>
+		<string>_plexmediasvr._tcp</string>
 	</array>
 </dict>
 </plist>
