@@ -59,20 +59,42 @@ struct DeviceDetailView: View {
     }
     
     /**
-     Parse the first three octets of the MAC-like address to look up the manufacturer
-     in the dynamic OUIDatabase.
+     Takes a raw MAC string like "A4CF99725E8A" or "A4:CF:99:72:5E:8A" and returns
+     just the **first three octets** (e.g. "a4:cf:99") in lowercase for OUI lookup.
+     */
+    private func ouiPrefix(from rawMac: String) -> String? {
+        // Remove any non-hex or non-colon characters
+        let cleaned = rawMac
+            .replacingOccurrences(of: "[^A-Fa-f0-9:]", with: "", options: .regularExpression)
+            .lowercased()
+        
+        // If it's already colon-separated, we might just split:
+        let hexCharsOnly = cleaned.replacingOccurrences(of: ":", with: "")
+        guard hexCharsOnly.count == 12 else {
+            // Not exactly 6 bytes worth of hex => can't parse
+            return nil
+        }
+        
+        // Insert colons every 2 hex digits => "a4:cf:99:72:5e:8a"
+        var pairs: [String] = []
+        for i in stride(from: 0, to: 12, by: 2) {
+            let start = hexCharsOnly.index(hexCharsOnly.startIndex, offsetBy: i)
+            let end   = hexCharsOnly.index(start, offsetBy: 2)
+            pairs.append(String(hexCharsOnly[start..<end]))
+        }
+        // We only care about the first three octets => "a4:cf:99"
+        return pairs.prefix(3).joined(separator: ":")
+    }
+
+    
+    /**
+     Final computed property that looks up the manufacturer
+     in the OUIDatabase if the `macLikeAddress` is parseable.
     */
     private var macOUI: String? {
         guard let mac = macLikeAddress else { return nil }
-        let lowerMac = mac.lowercased()
-        let components = lowerMac.split(separator: ":")
-        guard components.count >= 3 else { return nil }
-        
-        // Join the first 3 components back with ":" to form the OUI key (e.g. "98:50:2e").
-        let firstThree = components[0...2].joined(separator: ":")
-        
-        // Perform a lookup in our dynamic database.
-        return OUIDatabase.shared.manufacturer(for: firstThree)
+        guard let prefix = ouiPrefix(from: mac) else { return nil }
+        return OUIDatabase.shared.manufacturer(for: prefix)
     }
     
     var body: some View {
@@ -133,4 +155,3 @@ struct DeviceDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-

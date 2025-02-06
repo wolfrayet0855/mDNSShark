@@ -4,35 +4,117 @@
 <dict>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_http._tcp</string>
-		<string>_ftp._tcp</string>
-		<string>_services._dns-sd._udp</string>
-		<string> _ipp._tcp</string>
-		<string>_raop._tcp</string>
-		<string>_airdrop._tcp</string>
-		<string>_apple-mobdev2._tcp</string>
-		<string>_daap._tcp</string>
-		<string>_bluetoothd2._tcp&quot;</string>
-		<string>_afpovertcp._tcp</string>
-		<string>_ssh._tcp</string>
-		<string>_ftp._tcp</string>
-		<string>_smb._tcp</string>
-		<string>_airplay._tcp</string>
-		<string>_device-info._tcp</string>
-		<string>_ipp._tcp</string>
-		<string>_printer._tcp</string>
+		<string>_http._tcp
+    // Common services
+    &quot;_http._tcp&quot;,
+    &quot;_https._tcp&quot;,
+    &quot;_ftp._tcp&quot;,
+    &quot;_ssh._tcp&quot;,
+    &quot;_telnet._tcp&quot;,
+    &quot;_smb._tcp&quot;,
+    &quot;_afpovertcp._tcp&quot;,
+    &quot;_nfs._tcp&quot;,
+    &quot;_workstation._tcp&quot;,
+
+    // Apple / macOS / iOS services
+    &quot;_airdrop._tcp&quot;,
+    &quot;_airplay._tcp&quot;,
+    &quot;_apple-mobdev2._tcp&quot;,
+    &quot;_adisk._tcp&quot;,
+    &quot;_time-machine._tcp&quot;,
+    &quot;_airport._tcp&quot;,       // AirPort base station 
+    &quot;_afpovertcp._tcp&quot;,    // Apple Filing Protocol
+    &quot;_device-info._tcp&quot;,
+    &quot;_services._dns-sd._udp&quot;, // DNS-SD meta-service
+
+    // Printing &amp; Scanning
+    &quot;_ipp._tcp&quot;,           // Internet Printing Protocol
+    &quot;_ipps._tcp&quot;,          // Secure IPP
+    &quot;_printer._tcp&quot;,
+    &quot;_pdl-datastream._tcp&quot;,// HP Printer PDL
+    &quot;_scanner._tcp&quot;,
+
+    // Media &amp; Streaming
+    &quot;_raop._tcp&quot;,          // AirPlay audio streaming
+    &quot;_daap._tcp&quot;,          // iTunes DAAP
+    &quot;_dacp._tcp&quot;,          // iTunes/Apple TV remote control
+    &quot;_spotify-connect._tcp&quot;,
+    &quot;_googlecast._tcp&quot;,
+
+    // File sharing &amp; sync
+    &quot;_bluetoothd2._tcp&quot;,
+    &quot;_btsync._tcp&quot;,        // Resilio/BitTorrent Sync
+    &quot;_workstation._tcp&quot;,   // SMB workstation
+    &quot;_distcc._tcp&quot;,        // Distributed C/C++ compiler
+    &quot;_webdav._tcp&quot;,
+
+    // Remote screen / management
+    &quot;_rfb._tcp&quot;,           // VNC Remote Frame Buffer
+    &quot;_remotemanagement._tcp&quot;,
+
+    // IoT / HomeKit / Presence
+    &quot;_hap._tcp&quot;,           // HomeKit Accessory Protocol
+    &quot;_presence._tcp&quot;,
+    &quot;_mqtt._tcp&quot;,          // MQTT broker/client
+    &quot;_coap._udp&quot;,          // Constrained Application Protocol
+    &quot;_peertalk._tcp&quot;,
+
+    // Security &amp; Other
+    &quot;_services._dns-sd._udp&quot;,
+    &quot;_time._udp&quot;,
+    &quot;_timedate._udp&quot;,
+    &quot;_ssh._tcp&quot;,           // (Listed again if you want to group separately)
+    &quot;_tcpchat._tcp&quot;,       // Example custom chat
+    &quot;_raop._tcp&quot;,          // (Duplicate if you prefer grouping)
+    &quot;_acp-sync._tcp&quot;       // Example for Apple Config / sync
+]
+_http._tcp&quot;</string>
 		<string>_https._tcp</string>
-		<string>_rfb._tcp</string>
-		<string>_googlecast._tcp</string>
-		<string>_dacp._tcp</string>
+		<string>_ftp._tcp</string>
+		<string>_ssh._tcp</string>
+		<string>_telnet._tcp</string>
+		<string>_smb._tcp</string>
+		<string>_afpovertcp._tcp</string>
+		<string>_nfs._tcp</string>
 		<string>_workstation._tcp</string>
-		<string>_time-machine._tcp</string>
+		<string>_airdrop._tcp</string>
+		<string>_airplay._tcp</string>
+		<string>_apple-mobdev2._tcp</string>
 		<string>_adisk._tcp</string>
+		<string>_time-machine._tcp</string>
+		<string>_airport._tcp</string>
+		<string>_afpovertcp._tcp</string>
+		<string>_device-info._tcp</string>
+		<string>_services._dns-sd._udp</string>
+		<string>_ipp._tcp</string>
+		<string>_ipps._tcp</string>
+		<string>_printer._tcp</string>
+		<string>_pdl-datastream._tcp</string>
+		<string>_scanner._tcp</string>
+		<string>_raop._tcp</string>
+		<string>_daap._tcp</string>
+		<string>_dacp._tcp</string>
+		<string>_spotify-connect._tcp</string>
+		<string>_googlecast._tcp</string>
+		<string>_bluetoothd2._tcp</string>
+		<string>_btsync._tcp</string>
+		<string>_workstation._tcp</string>
+		<string>_distcc._tcp</string>
+		<string>_webdav._tcp</string>
+		<string>_rfb._tcp</string>
+		<string>_remotemanagement._tcp</string>
 		<string>_hap._tcp</string>
 		<string>_presence._tcp</string>
-		<string>_btsync._tcp</string>
 		<string>_mqtt._tcp</string>
 		<string>_coap._udp</string>
+		<string>_peertalk._tcp</string>
+		<string>_services._dns-sd._udp</string>
+		<string>_time._udp</string>
+		<string>_timedate._udp</string>
+		<string>_ssh._tcp</string>
+		<string>_tcpchat._tcp</string>
+		<string>_raop._tcp</string>
+		<string>_acp-sync._tcp</string>
 	</array>
 </dict>
 </plist>

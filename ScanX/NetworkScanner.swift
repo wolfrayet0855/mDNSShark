@@ -13,35 +13,70 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     // Updated service types list: removed duplicates and fixed typos.
     // Updated service types list: includes both your existing services and additional service types.
     private let serviceTypes: [String] = [
+        // Common services
         "_http._tcp",
-        "_ipp._tcp",
-        "_raop._tcp",
-        "_daap._tcp",
-        "_airdrop._tcp",
-        "_bluetoothd2._tcp",
-        "_ftp._tcp",
-        "_services._dns-sd._udp",
-        "_apple-mobdev2._tcp",
-        "_afpovertcp._tcp",
-        "_ssh._tcp",
-        "_smb._tcp",
-        "_airplay._tcp",
-        "_device-info._tcp",
-        "_printer._tcp",
-        // Additional Service Types
         "_https._tcp",
-        "_rfb._tcp",
-        "_googlecast._tcp",
-        "_dacp._tcp",
+        "_ftp._tcp",
+        "_ssh._tcp",
+        "_telnet._tcp",
+        "_smb._tcp",
+        "_afpovertcp._tcp",
+        "_nfs._tcp",
         "_workstation._tcp",
-        "_time-machine._tcp",
+
+        // Apple / macOS / iOS services
+        "_airdrop._tcp",
+        "_airplay._tcp",
+        "_apple-mobdev2._tcp",
         "_adisk._tcp",
-        "_hap._tcp",
+        "_time-machine._tcp",
+        "_airport._tcp",       // AirPort base station
+        "_afpovertcp._tcp",    // Apple Filing Protocol
+        "_device-info._tcp",
+        "_services._dns-sd._udp", // DNS-SD meta-service
+
+        // Printing & Scanning
+        "_ipp._tcp",           // Internet Printing Protocol
+        "_ipps._tcp",          // Secure IPP
+        "_printer._tcp",
+        "_pdl-datastream._tcp",// HP Printer PDL
+        "_scanner._tcp",
+
+        // Media & Streaming
+        "_raop._tcp",          // AirPlay audio streaming
+        "_daap._tcp",          // iTunes DAAP
+        "_dacp._tcp",          // iTunes/Apple TV remote control
+        "_spotify-connect._tcp",
+        "_googlecast._tcp",
+
+        // File sharing & sync
+        "_bluetoothd2._tcp",
+        "_btsync._tcp",        // Resilio/BitTorrent Sync
+        "_workstation._tcp",   // SMB workstation
+        "_distcc._tcp",        // Distributed C/C++ compiler
+        "_webdav._tcp",
+
+        // Remote screen / management
+        "_rfb._tcp",           // VNC Remote Frame Buffer
+        "_remotemanagement._tcp",
+
+        // IoT / HomeKit / Presence
+        "_hap._tcp",           // HomeKit Accessory Protocol
         "_presence._tcp",
-        "_btsync._tcp",
-        "_mqtt._tcp",
-        "_coap._udp"
+        "_mqtt._tcp",          // MQTT broker/client
+        "_coap._udp",          // Constrained Application Protocol
+        "_peertalk._tcp",
+
+        // Security & Other
+        "_services._dns-sd._udp",
+        "_time._udp",
+        "_timedate._udp",
+        "_ssh._tcp",           // (Listed again if you want to group separately)
+        "_tcpchat._tcp",       // Example custom chat
+        "_raop._tcp",          // (Duplicate if you prefer grouping)
+        "_acp-sync._tcp"       // Example for Apple Config / sync
     ]
+
 
     
     // Dedicated queue for Bonjour browser tasks.
