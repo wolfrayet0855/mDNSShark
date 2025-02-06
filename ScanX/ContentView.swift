@@ -1,8 +1,11 @@
+
 import SwiftUI
 
 // MARK: - ContentView
 struct ContentView: View {
     @StateObject private var scanner = NetworkScanner()
+    // A slider-controlled value for the scan duration (in seconds)
+    @State private var scanDuration: Double = 25.0
     
     // A mapping from service types to their definitions (summaries) for display in the list view.
     private let serviceTypeSummaries: [String: String] = [
@@ -79,10 +82,18 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack {
+                // Slider to adjust scan duration for testing purposes
+                VStack {
+                    Text("Scan Duration: \(Int(scanDuration)) seconds")
+                    Slider(value: $scanDuration, in: 5...60, step: 1)
+                        .padding([.leading, .trailing])
+                }
+                
                 Button(action: {
-                    scanner.scanNetwork()
+                    // Pass the current scanDuration value into the scanner
+                    scanner.scanNetwork(duration: scanDuration)
                 }) {
-                    Text(scanner.isScanning ? "Scanning..." : "Scan Network")
+                    Text(scanner.isScanning ? "Scan in Progress" : "Scan Network")
                         .font(.headline)
                         .padding()
                         .frame(maxWidth: .infinity)
@@ -90,6 +101,8 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
+                // Disable the button when scanning is in progress.
+                .disabled(scanner.isScanning)
                 .padding()
                 
                 if scanner.isScanning {
@@ -111,8 +124,6 @@ struct ContentView: View {
                                 Text(device.serviceType)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
-                                
-                                // Show a short summary of the service type, if we have one:
                                 Text(serviceTypeSummaries[device.serviceType] ?? "No summary available.")
                                     .font(.caption)
                                     .foregroundColor(.gray)

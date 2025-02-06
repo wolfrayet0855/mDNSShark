@@ -43,6 +43,7 @@ class OUIDatabase {
         "88:c6:63": "Apple, Inc.",
         "4c:8d:79": "Apple, Inc.",
         "a4:5e:60": "Apple, Inc.",
+        "78:64:c0": "Apple, Inc",
         
         // Cisco (10 entries)
         "00:1f:5b": "Cisco Systems, Inc.",

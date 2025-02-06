@@ -10,8 +10,7 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     @Published var devices: [Device] = []
     @Published var isScanning: Bool = false
 
-    // Updated service types list: removed duplicates and fixed typos.
-    // Updated service types list: includes both your existing services and additional service types.
+    // List of service types to search for
     private let serviceTypes: [String] = [
         // MARK: - Common Services
         "_http._tcp",
@@ -81,8 +80,6 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         "_xbmc-jsonrpc._tcp",    // (Newly added; Kodi/XBMC media center)
         "_plexmediasvr._tcp"     // (Newly added; Plex media server)
     ]
-
-
     
     // Dedicated queue for Bonjour browser tasks.
     private let bonjourQueue = DispatchQueue(label: "com.example.ScanX.bonjourQueue")
@@ -90,14 +87,14 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     private var bonjourBrowsers: [NWBrowser] = []
     private var serviceToDeviceId: [ObjectIdentifier: UUID] = [:]
     
-    // Scan duration in seconds.
-    private let scanDuration: TimeInterval = 25.0
+    // Logger
     private let logger = Logger(subsystem: "com.example.ScanX", category: "NetworkScanner")
     
     // Instance of the local subnet scanner.
     private let localScanner = LocalDeviceScanner()
     private var cancellables = Set<AnyCancellable>()
     
+    // A device discovered on the network.
     class Device: ObservableObject, Identifiable {
         let id = UUID()
         let serviceName: String
@@ -120,7 +117,8 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     }
     
     // MARK: - Public Scanning Method
-    func scanNetwork() {
+    /// Starts a network scan with the given duration.
+    func scanNetwork(duration: TimeInterval = 25.0) {
         guard !isScanning else {
             logger.debug("Scan already in progress.")
             return
@@ -138,8 +136,8 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
             createAndStartBrowser(for: type)
         }
         
-        // Start SSDP scanning.
-        scanSSDP()
+        // Start SSDP scanning with the provided duration.
+        scanSSDP(duration: duration)
         
         // Start local TCP subnet scanning.
         localScanner.scanLocalSubnet(port: NWEndpoint.Port(rawValue: 80)!)
@@ -157,33 +155,31 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
             }
             .store(in: &cancellables)
         
-        // End the scan after the configured duration.
-        DispatchQueue.main.asyncAfter(deadline: .now() + scanDuration) { [weak self] in
+        // End the scan after the specified duration.
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
             guard let self = self else { return }
             for browser in self.bonjourBrowsers { browser.cancel() }
             self.bonjourBrowsers.removeAll()
             self.isScanning = false
-            self.logger.info("Scan ended after \(self.scanDuration) seconds.")
+            self.logger.info("Scan ended after \(duration) seconds.")
         }
     }
     
     // MARK: - Bonjour Scanning
     private func createAndStartBrowser(for serviceType: String) {
         let descriptor = NWBrowser.Descriptor.bonjour(type: serviceType, domain: nil)
-        // Choose network parameters based on service type:
-        // If the service type indicates UDP, use UDP parameters; otherwise, use TCP.
+        // Choose network parameters based on service type.
         let parameters: NWParameters = serviceType.contains("_udp") ? .udp : .tcp
         let browser = NWBrowser(for: descriptor, using: parameters)
-        let capturedServiceType: String = serviceType  // capture explicitly
+        let capturedServiceType: String = serviceType
         
         browser.stateUpdateHandler = { [weak self] (state: NWBrowser.State) -> Void in
             guard let self = self else { return }
             self.logger.info("Bonjour browser for \(capturedServiceType) state: \(String(describing: state))")
             if case .failed(let error) = state {
                 self.logger.error("Bonjour browser for \(capturedServiceType) failed: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self.isScanning = false
-                }
+                // Do NOT set self.isScanning = false here.
+                // This ensures the scan remains "in progress" for the full duration.
             }
         }
         
@@ -233,7 +229,7 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     }
     
     // MARK: - SSDP/UPnP Scanning via UDP
-    private func scanSSDP() {
+    private func scanSSDP(duration: TimeInterval) {
         let ssdpAddress = "239.255.255.250"
         let ssdpPort: UInt16 = 1900
         let ssdpMessage = """
@@ -293,7 +289,7 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         }
         source.resume()
         
-        DispatchQueue.global().asyncAfter(deadline: .now() + scanDuration) {
+        DispatchQueue.global().asyncAfter(deadline: .now() + duration) {
             source.cancel()
         }
     }
@@ -446,4 +442,3 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         return nil
     }
 }
-
