@@ -6,6 +6,8 @@ struct ContentView: View {
     @StateObject private var scanner = NetworkScanner()
     // A slider-controlled value for the scan duration (in seconds)
     @State private var scanDuration: Double = 25.0
+    // State to control the display of the router tip banner on initial launch.
+    @State private var showRouterTip: Bool = true
     
     // A mapping from service types to their definitions (summaries) for display in the list view.
     private let serviceTypeSummaries: [String: String] = [
@@ -82,6 +84,25 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack {
+                // Banner message displayed on initial launch.
+                if showRouterTip {
+                    HStack {
+                        Image(systemName: "info.circle")
+                        Text("Tip: On your local network, you can detect devices by logging into your router.")
+                            .font(.subheadline)
+                        Spacer()
+                        Button(action: {
+                            showRouterTip = false
+                        }) {
+                            Image(systemName: "xmark.circle")
+                        }
+                    }
+                    .padding()
+                    .background(Color.yellow.opacity(0.2))
+                    .cornerRadius(8)
+                    .padding([.leading, .trailing])
+                }
+                
                 // Slider to adjust scan duration for testing purposes
                 VStack {
                     Text("Scan Duration: \(Int(scanDuration)) seconds")
