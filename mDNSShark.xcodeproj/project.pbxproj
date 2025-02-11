@@ -13,7 +13,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		9A1C9E892D443D5300643122 /* ScanX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScanX.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A1C9E892D443D5300643122 /* mDNSShark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = mDNSShark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A8F66CE2D4EEF4B00A033B5 /* libdns_services.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libdns_services.tbd; path = usr/lib/libdns_services.tbd; sourceTree = SDKROOT; };
 		9A8F66FE2D4F069100A033B5 /* ScanX-Bridging-Header.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ScanX-Bridging-Header.m"; sourceTree = "<group>"; };
 		9A8F67042D4F076500A033B5 /* ScanX-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ScanX-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -22,22 +22,22 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9A048D9A2D45B35D000B42BF /* Exceptions for "ScanX" folder in "ScanX" target */ = {
+		9A048D9A2D45B35D000B42BF /* Exceptions for "mDNSShark" folder in "mDNSShark" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 9A1C9E882D443D5300643122 /* ScanX */;
+			target = 9A1C9E882D443D5300643122 /* mDNSShark */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		9A1C9E8B2D443D5300643122 /* ScanX */ = {
+		9A1C9E8B2D443D5300643122 /* mDNSShark */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				9A048D9A2D45B35D000B42BF /* Exceptions for "ScanX" folder in "ScanX" target */,
+				9A048D9A2D45B35D000B42BF /* Exceptions for "mDNSShark" folder in "mDNSShark" target */,
 			);
-			path = ScanX;
+			path = mDNSShark;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -58,7 +58,7 @@
 		9A1C9E802D443D5300643122 = {
 			isa = PBXGroup;
 			children = (
-				9A1C9E8B2D443D5300643122 /* ScanX */,
+				9A1C9E8B2D443D5300643122 /* mDNSShark */,
 				9A1C9E8A2D443D5300643122 /* Products */,
 				9A8F66CD2D4EEED100A033B5 /* Frameworks */,
 			);
@@ -67,7 +67,7 @@
 		9A1C9E8A2D443D5300643122 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9A1C9E892D443D5300643122 /* ScanX.app */,
+				9A1C9E892D443D5300643122 /* mDNSShark.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -87,9 +87,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		9A1C9E882D443D5300643122 /* ScanX */ = {
+		9A1C9E882D443D5300643122 /* mDNSShark */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9A1C9E972D443D5400643122 /* Build configuration list for PBXNativeTarget "ScanX" */;
+			buildConfigurationList = 9A1C9E972D443D5400643122 /* Build configuration list for PBXNativeTarget "mDNSShark" */;
 			buildPhases = (
 				9A1C9E852D443D5300643122 /* Sources */,
 				9A1C9E862D443D5300643122 /* Frameworks */,
@@ -100,13 +100,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				9A1C9E8B2D443D5300643122 /* ScanX */,
+				9A1C9E8B2D443D5300643122 /* mDNSShark */,
 			);
-			name = ScanX;
+			name = mDNSShark;
 			packageProductDependencies = (
 			);
 			productName = ScanX;
-			productReference = 9A1C9E892D443D5300643122 /* ScanX.app */;
+			productReference = 9A1C9E892D443D5300643122 /* mDNSShark.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -125,7 +125,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 9A1C9E842D443D5300643122 /* Build configuration list for PBXProject "ScanX" */;
+			buildConfigurationList = 9A1C9E842D443D5300643122 /* Build configuration list for PBXProject "mDNSShark" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -142,7 +142,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				9A1C9E882D443D5300643122 /* ScanX */,
+				9A1C9E882D443D5300643122 /* mDNSShark */,
 			);
 		};
 /* End PBXProject section */
@@ -303,7 +303,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ScanX/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Scan(x)";
+				INFOPLIST_KEY_CFBundleDisplayName = mDNSShark;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app requires access to your local network to scan for devices";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -345,7 +345,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ScanX/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Scan(x)";
+				INFOPLIST_KEY_CFBundleDisplayName = mDNSShark;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app requires access to your local network to scan for devices";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -374,7 +374,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		9A1C9E842D443D5300643122 /* Build configuration list for PBXProject "ScanX" */ = {
+		9A1C9E842D443D5300643122 /* Build configuration list for PBXProject "mDNSShark" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9A1C9E952D443D5400643122 /* Debug */,
@@ -383,7 +383,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9A1C9E972D443D5400643122 /* Build configuration list for PBXNativeTarget "ScanX" */ = {
+		9A1C9E972D443D5400643122 /* Build configuration list for PBXNativeTarget "mDNSShark" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9A1C9E982D443D5400643122 /* Debug */,
