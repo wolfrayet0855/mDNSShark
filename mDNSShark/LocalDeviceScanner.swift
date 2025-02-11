@@ -6,6 +6,7 @@ class LocalDeviceScanner: ObservableObject {
     @Published var discoveredIPs: [String] = []
     private let logger = Logger(subsystem: "com.example.mDNSShark", category: "LocalDeviceScanner")
     
+    /// Scans the local /24 subnet by iterating over each IP and invoking a dedicated scan for each.
     func scanLocalSubnet(port: NWEndpoint.Port = NWEndpoint.Port(integerLiteral: 80), timeout: TimeInterval = 1.0) {
         guard let localPrefix = getLocalIPPrefix() else {
             logger.error("Failed to get local IP prefix.")
@@ -35,6 +36,7 @@ class LocalDeviceScanner: ObservableObject {
         }
     }
     
+    /// Helper method that attempts a TCP connection to the given IP address.
     private func scanSingleIP(ip: String,
                               port: NWEndpoint.Port,
                               parameters: NWParameters,
@@ -43,6 +45,18 @@ class LocalDeviceScanner: ObservableObject {
         let host = NWEndpoint.Host(ip)
         let connection = NWConnection(host: host, port: port, using: parameters)
         
+        // Use a lock to ensure the completion closure is only called once.
+        let lock = NSLock()
+        var didComplete = false
+        func safeComplete(_ success: Bool) {
+            lock.lock()
+            defer { lock.unlock() }
+            if !didComplete {
+                didComplete = true
+                completion(success)
+            }
+        }
+        
         connection.stateUpdateHandler = { [weak self] state in
             guard let self = self else { return }
             self.logger.info("NWConnection for \(ip) state: \(String(describing: state))")
@@ -50,11 +64,11 @@ class LocalDeviceScanner: ObservableObject {
             case .ready:
                 self.logger.debug("Connection ready to \(ip)")
                 connection.cancel()
-                completion(true)
+                safeComplete(true)
             case .failed(let error):
                 self.logger.debug("Connection failed to \(ip): \(error.localizedDescription)")
                 connection.cancel()
-                completion(false)
+                safeComplete(false)
             default:
                 break
             }
@@ -63,10 +77,13 @@ class LocalDeviceScanner: ObservableObject {
         connection.start(queue: DispatchQueue.global())
         DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
             connection.cancel()
-            completion(false)
+            safeComplete(false)
         }
     }
     
+    // MARK: - Helper Functions for IP Address Retrieval
+    
+    /// Retrieves the device's WiFi IP address.
     func getWiFiAddress() -> String? {
         var address: String?
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
@@ -100,6 +117,7 @@ class LocalDeviceScanner: ObservableObject {
         return address
     }
     
+    /// Returns the local IP prefix (first three octets followed by a dot) based on the WiFi address.
     func getLocalIPPrefix() -> String? {
         if let wifiAddress = getWiFiAddress() {
             return getLocalIPPrefix(for: wifiAddress)
@@ -107,6 +125,7 @@ class LocalDeviceScanner: ObservableObject {
         return nil
     }
     
+    /// Given an IPv4 address string, returns the /24 prefix (e.g. "192.168.1.").
     func getLocalIPPrefix(for ip: String) -> String? {
         let parts = ip.split(separator: ".")
         if parts.count == 4 {
