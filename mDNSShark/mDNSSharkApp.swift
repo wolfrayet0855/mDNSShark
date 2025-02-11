@@ -1,10 +1,11 @@
 import SwiftUI
 
 @main
-struct ScanXApp: App {
+struct mDNSSharkApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
     }
 }
+

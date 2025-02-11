@@ -1,15 +1,11 @@
 
 import SwiftUI
 
-// MARK: - ContentView
 struct ContentView: View {
     @StateObject private var scanner = NetworkScanner()
-    // A slider-controlled value for the scan duration (in seconds)
     @State private var scanDuration: Double = 25.0
-    // State to control the display of the router tip banner on initial launch.
     @State private var showRouterTip: Bool = true
     
-    // A mapping from service types to their definitions (summaries) for display in the list view.
     private let serviceTypeSummaries: [String: String] = [
         // Common / Web
         "_http._tcp": "HTTP web service, often used for websites/APIs.",
@@ -84,7 +80,6 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack {
-                // Banner message displayed on initial launch.
                 if showRouterTip {
                     HStack {
                         Image(systemName: "info.circle")
@@ -103,7 +98,6 @@ struct ContentView: View {
                     .padding([.leading, .trailing])
                 }
                 
-                // Slider to adjust scan duration for testing purposes
                 VStack {
                     Text("Scan Duration: \(Int(scanDuration)) seconds")
                     Slider(value: $scanDuration, in: 5...60, step: 1)
@@ -111,7 +105,6 @@ struct ContentView: View {
                 }
                 
                 Button(action: {
-                    // Pass the current scanDuration value into the scanner
                     scanner.scanNetwork(duration: scanDuration)
                 }) {
                     Text(scanner.isScanning ? "Scan in Progress" : "Scan Network")
@@ -122,7 +115,6 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
-                // Disable the button when scanning is in progress.
                 .disabled(scanner.isScanning)
                 .padding()
                 
@@ -137,7 +129,6 @@ struct ContentView: View {
                         .padding()
                 } else {
                     List(scanner.devices) { device in
-                        // Display the device name, service type, and a one-line summary.
                         NavigationLink(destination: DeviceDetailView(device: device)) {
                             VStack(alignment: .leading) {
                                 Text(device.identifier)
@@ -154,12 +145,11 @@ struct ContentView: View {
                 }
                 Spacer()
             }
-            .navigationTitle("Network Scanner")
+            .navigationTitle("mDNSShark")
         }
     }
 }
 
-// MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()

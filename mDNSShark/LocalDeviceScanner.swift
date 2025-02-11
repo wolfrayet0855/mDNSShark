@@ -1,19 +1,11 @@
-//
-//  LocalDeviceScanner.swift
-//  ScanX
-//
-//  Created by user on 2/4/25.
-//
-
 import Foundation
 import Network
 import os
 
 class LocalDeviceScanner: ObservableObject {
     @Published var discoveredIPs: [String] = []
-    private let logger = Logger(subsystem: "com.example.ScanX", category: "LocalDeviceScanner")
+    private let logger = Logger(subsystem: "com.example.mDNSShark", category: "LocalDeviceScanner")
     
-    /// Scans the local /24 subnet by iterating over each IP and invoking a dedicated scan for each.
     func scanLocalSubnet(port: NWEndpoint.Port = NWEndpoint.Port(integerLiteral: 80), timeout: TimeInterval = 1.0) {
         guard let localPrefix = getLocalIPPrefix() else {
             logger.error("Failed to get local IP prefix.")
@@ -43,7 +35,6 @@ class LocalDeviceScanner: ObservableObject {
         }
     }
     
-    /// Helper method that attempts a TCP connection to the given IP address.
     private func scanSingleIP(ip: String,
                               port: NWEndpoint.Port,
                               parameters: NWParameters,
@@ -52,7 +43,7 @@ class LocalDeviceScanner: ObservableObject {
         let host = NWEndpoint.Host(ip)
         let connection = NWConnection(host: host, port: port, using: parameters)
         
-        connection.stateUpdateHandler = { [weak self] (state: NWConnection.State) -> Void in
+        connection.stateUpdateHandler = { [weak self] state in
             guard let self = self else { return }
             self.logger.info("NWConnection for \(ip) state: \(String(describing: state))")
             switch state {
@@ -76,9 +67,6 @@ class LocalDeviceScanner: ObservableObject {
         }
     }
     
-    // MARK: - Helper Functions for IP Address Retrieval
-    
-    /// Retrieves the device's WiFi IP address.
     func getWiFiAddress() -> String? {
         var address: String?
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
@@ -89,19 +77,21 @@ class LocalDeviceScanner: ObservableObject {
                 let interface = currentPtr.pointee
                 let flags = Int32(interface.ifa_flags)
                 if (flags & (IFF_UP | IFF_RUNNING | IFF_LOOPBACK)) == (IFF_UP | IFF_RUNNING),
-                   interface.ifa_addr.pointee.sa_family == UInt8(AF_INET) {
+                   interface.ifa_addr?.pointee.sa_family == UInt8(AF_INET) {
                     let name = String(cString: interface.ifa_name)
-                    if name == "en0" { // Typical WiFi interface
+                    if name == "en0" {
                         var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                        getnameinfo(interface.ifa_addr,
-                                    socklen_t(interface.ifa_addr.pointee.sa_len),
-                                    &hostname,
-                                    socklen_t(hostname.count),
-                                    nil,
-                                    0,
-                                    NI_NUMERICHOST)
-                        address = String(cString: hostname)
-                        break
+                        if let addr = interface.ifa_addr {
+                            getnameinfo(addr,
+                                        socklen_t(addr.pointee.sa_len),
+                                        &hostname,
+                                        socklen_t(hostname.count),
+                                        nil,
+                                        0,
+                                        NI_NUMERICHOST)
+                            address = String(cString: hostname)
+                            break
+                        }
                     }
                 }
                 ptr = interface.ifa_next
@@ -110,7 +100,6 @@ class LocalDeviceScanner: ObservableObject {
         return address
     }
     
-    /// Returns the local IP prefix (first three octets followed by a dot) based on the WiFi address.
     func getLocalIPPrefix() -> String? {
         if let wifiAddress = getWiFiAddress() {
             return getLocalIPPrefix(for: wifiAddress)
@@ -118,7 +107,6 @@ class LocalDeviceScanner: ObservableObject {
         return nil
     }
     
-    /// Given an IPv4 address string, returns the /24 prefix (e.g. "192.168.1.").
     func getLocalIPPrefix(for ip: String) -> String? {
         let parts = ip.split(separator: ".")
         if parts.count == 4 {
