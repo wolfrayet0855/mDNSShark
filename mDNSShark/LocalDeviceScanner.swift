@@ -1,10 +1,20 @@
 import Foundation
 import Network
 import os
+import Darwin
 
 class LocalDeviceScanner: ObservableObject {
     @Published var discoveredIPs: [String] = []
     private let logger = Logger(subsystem: "com.example.mDNSShark", category: "LocalDeviceScanner")
+    
+    /// Heuristically determines the default gateway.
+    /// Assumes the router is at x.x.x.1, where x.x.x. is the device's Wi‑Fi prefix.
+    private func getDefaultGateway() -> String? {
+        if let wifiAddress = getWiFiAddress(), let prefix = getLocalIPPrefix(for: wifiAddress) {
+            return "\(prefix)1"
+        }
+        return nil
+    }
     
     /// Scans the local /24 subnet by iterating over each IP and invoking a dedicated scan for each.
     func scanLocalSubnet(port: NWEndpoint.Port = NWEndpoint.Port(integerLiteral: 80), timeout: TimeInterval = 1.0) {
@@ -12,6 +22,9 @@ class LocalDeviceScanner: ObservableObject {
             logger.error("Failed to get local IP prefix.")
             return
         }
+        // Use the heuristic to determine the default gateway.
+        let defaultGatewayIP = getDefaultGateway()
+        logger.info("Default gateway (heuristic) detected: \(defaultGatewayIP ?? "unknown")")
         logger.info("Starting local subnet scan on prefix \(localPrefix)")
         
         let group = DispatchGroup()
@@ -20,10 +33,17 @@ class LocalDeviceScanner: ObservableObject {
         
         for i in 1...254 {
             let ip = "\(localPrefix)\(i)"
+            // Skip the default gateway so it doesn't show as a discovered device.
+            if let defaultGatewayIP = defaultGatewayIP, ip == defaultGatewayIP {
+                logger.debug("Skipping default gateway IP: \(ip)")
+                continue
+            }
+            
             group.enter()
             scanSingleIP(ip: ip, port: port, parameters: tcpParameters, timeout: timeout) { success in
-                if success {
+                if success, !results.contains(ip) {
                     results.append(ip)
+                    self.logger.info("Local scan discovered device at IP: \(ip)")
                 }
                 group.leave()
             }
@@ -45,7 +65,7 @@ class LocalDeviceScanner: ObservableObject {
         let host = NWEndpoint.Host(ip)
         let connection = NWConnection(host: host, port: port, using: parameters)
         
-        // Use a lock to ensure the completion closure is only called once.
+        // Ensure the completion closure is only called once.
         let lock = NSLock()
         var didComplete = false
         func safeComplete(_ success: Bool) {
@@ -83,7 +103,7 @@ class LocalDeviceScanner: ObservableObject {
     
     // MARK: - Helper Functions for IP Address Retrieval
     
-    /// Retrieves the device's WiFi IP address.
+    /// Retrieves the device's Wi‑Fi IP address.
     func getWiFiAddress() -> String? {
         var address: String?
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
@@ -96,7 +116,7 @@ class LocalDeviceScanner: ObservableObject {
                 if (flags & (IFF_UP | IFF_RUNNING | IFF_LOOPBACK)) == (IFF_UP | IFF_RUNNING),
                    interface.ifa_addr?.pointee.sa_family == UInt8(AF_INET) {
                     let name = String(cString: interface.ifa_name)
-                    if name == "en0" {
+                    if name == "en0" { // Typical Wi‑Fi interface
                         var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
                         if let addr = interface.ifa_addr {
                             getnameinfo(addr,
@@ -117,7 +137,7 @@ class LocalDeviceScanner: ObservableObject {
         return address
     }
     
-    /// Returns the local IP prefix (first three octets followed by a dot) based on the WiFi address.
+    /// Returns the local IP prefix (first three octets followed by a dot) based on the Wi‑Fi address.
     func getLocalIPPrefix() -> String? {
         if let wifiAddress = getWiFiAddress() {
             return getLocalIPPrefix(for: wifiAddress)
