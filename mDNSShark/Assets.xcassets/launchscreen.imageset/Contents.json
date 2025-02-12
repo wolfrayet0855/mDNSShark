@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "Scan(x).png",
+      "filename" : "mDNSx1.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "Scan(x)x2.png",
+      "filename" : "mDNSx2.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "Scan(x).3png.png",
+      "filename" : "mDNSx3.png",
       "idiom" : "universal",
       "scale" : "3x"
     }
