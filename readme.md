@@ -1,3 +1,5 @@
+## mDNSShark
+
 mDNSShark is an **open-source** iPhone application, created by a small team of engineers who wanted a simpler, clearer way to explore local networks. By tapping into protocols like Multicast DNS (mDNS), DNS-SD, and SSDP, mDNSShark quickly uncovers printers, media servers, IoT gadgets, and other active services on your home or office Wi-Fi—no convoluted setup required. If you’ve ever wondered what devices are really on your network, or how various services talk to each other, mDNSShark is designed to give you those answers efficiently and privately.
 
 ## Simplicity and Privacy  
