@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct ContentView: View {
@@ -146,6 +145,13 @@ struct ContentView: View {
                 Spacer()
             }
             .navigationTitle("mDNSShark")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: SpeedTestView()) {
+                        Image(systemName: "speedometer")
+                    }
+                }
+            }
         }
     }
 }
@@ -155,3 +161,4 @@ struct ContentView_Previews: PreviewProvider {
         ContentView()
     }
 }
+
