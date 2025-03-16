@@ -1,3 +1,10 @@
+
+//
+//  SpeedTestView.swift
+//  mDNSShark
+//
+//  Created by user on 3/15/25.
+//
 //
 //  SpeedTestView.swift
 //  mDNSShark
@@ -8,14 +15,17 @@
 import SwiftUI
 import Network
 
-struct SpeedTestView: View {
-    @State private var downloadSpeed: Double?
-    @State private var uploadSpeed: Double?
-    @State private var latency: Double?
-    @State private var isTesting: Bool = false
-    @State private var errorMessage: String?
-
-    // Multiple Apple speed test domains
+// MARK: - SpeedTestManager
+/// An ObservableObject that manages network speed tests for download, upload, and latency.
+class SpeedTestManager: ObservableObject {
+    @Published var downloadSpeed: Double?
+    @Published var uploadSpeed: Double?
+    @Published var latency: Double?
+    @Published var isTesting: Bool = false
+    @Published var errorMessage: String?
+    
+    // MARK: - Test Endpoints
+    /// List of Apple speed test hosts.
     private let appleSpeedTestHosts = [
         "speedtest-sjc1.apple.com",
         "speedtest-lax.apple.com",
@@ -23,120 +33,70 @@ struct SpeedTestView: View {
         "speedtest-syd.apple.com"
     ]
     
-    // Fallback CDN
+    /// Fallback CDN URL.
     private let fallbackTestURL = "https://ipv4.ikoula.testdebit.info/10M.iso"
     
-    // Final IP-based test (plain HTTP).
-    // If this also fails, your network likely blocks all traffic or has no route.
+    /// Final IP-based test (plain HTTP).
+    /// Note: This endpoint requires an ATS exception in your Info.plist.
     private let ipTestURL = "http://1.1.1.1/"
     
-    var body: some View {
-        Form {
-            Section(header: Text("Speed Test Results")) {
-                HStack {
-                    Text("Download Speed:")
-                    Spacer()
-                    if let speed = downloadSpeed {
-                        Text(String(format: "%.2f Mbps", speed))
-                    } else {
-                        Text("N/A")
-                    }
-                }
-                HStack {
-                    Text("Upload Speed:")
-                    Spacer()
-                    if let speed = uploadSpeed {
-                        Text(String(format: "%.2f Mbps", speed))
-                    } else {
-                        Text("N/A")
-                    }
-                }
-                HStack {
-                    Text("Latency:")
-                    Spacer()
-                    if let latency = latency {
-                        Text(String(format: "%.0f ms", latency))
-                    } else {
-                        Text("N/A")
-                    }
-                }
-            }
-            
-            if let errorMessage = errorMessage {
-                Section {
-                    Text("Error: \(errorMessage)")
-                        .foregroundColor(.red)
-                }
-            }
-            
-            Section {
-                if isTesting {
-                    HStack {
-                        Spacer()
-                        ProgressView("Testing...")
-                        Spacer()
-                    }
-                }
-                Button(action: {
-                    startSpeedTest()
-                }) {
-                    Text("Start Speed Test")
-                        .frame(maxWidth: .infinity)
-                }
-                .disabled(isTesting)
-            }
+    // MARK: - Public API
+    /// Starts the concurrent speed tests.
+    func startSpeedTest() {
+        // Reset test results
+        DispatchQueue.main.async {
+            self.isTesting = true
+            self.errorMessage = nil
+            self.downloadSpeed = nil
+            self.uploadSpeed = nil
+            self.latency = nil
         }
-        .navigationTitle("Speed Test")
-    }
-    
-    private func startSpeedTest() {
-        isTesting = true
-        errorMessage = nil
-        downloadSpeed = nil
-        uploadSpeed = nil
-        latency = nil
         
         let group = DispatchGroup()
         
+        // Download Test
         group.enter()
-        performDownloadTest { speed in
+        performDownloadTest { [weak self] speed in
             DispatchQueue.main.async {
-                self.downloadSpeed = speed
+                self?.downloadSpeed = speed
             }
             group.leave()
         }
         
+        // Upload Test
         group.enter()
-        performUploadTest { speed in
+        performUploadTest { [weak self] speed in
             DispatchQueue.main.async {
-                self.uploadSpeed = speed
+                self?.uploadSpeed = speed
             }
             group.leave()
         }
         
+        // Latency Test
         group.enter()
-        performLatencyTest { latencyValue in
+        performLatencyTest { [weak self] latencyValue in
             DispatchQueue.main.async {
-                self.latency = latencyValue
+                self?.latency = latencyValue
             }
             group.leave()
         }
         
-        group.notify(queue: .main) {
-            self.isTesting = false
+        group.notify(queue: .main) { [weak self] in
+            self?.isTesting = false
         }
     }
     
-    // MARK: - Multi-Domain Download Test with IP fallback
+    // MARK: - Download Test
+    /// Performs a download test using multiple endpoints with fallback.
     private func performDownloadTest(completion: @escaping (Double?) -> Void) {
         tryDownload(
             hosts: appleSpeedTestHosts,
             fallbackURL: fallbackTestURL,
             ipFallbackURL: ipTestURL
-        ) { speed, error in
+        ) { [weak self] speed, error in
             if let error = error {
                 DispatchQueue.main.async {
-                    self.errorMessage = error
+                    self?.errorMessage = error
                 }
                 completion(nil)
             } else {
@@ -145,74 +105,67 @@ struct SpeedTestView: View {
         }
     }
     
+    /// Recursively attempts to download from a list of hosts; if all fail, it uses fallback URLs.
     private func tryDownload(
         hosts: [String],
         fallbackURL: String,
         ipFallbackURL: String,
         completion: @escaping (Double?, String?) -> Void
     ) {
-        // If no more Apple hosts left, try fallback domain
+        // If no more Apple hosts left, try the fallback URL.
         guard !hosts.isEmpty else {
-            // Try the fallback domain
             guard let fallback = URL(string: fallbackURL) else {
                 completion(nil, "Could not form fallback URL.")
                 return
             }
-            downloadFrom(url: fallback) { speed, error in
+            downloadFrom(url: fallback) { [weak self] speed, error in
                 if let error = error {
-                    print("Failed fallback domain with error: \(error). Trying IP next...")
-                    // Next, try IP-based request (requires ATS exception)
+                    print("Failed fallback domain with error: \(error). Trying IP-based test next...")
                     guard let ipURL = URL(string: ipFallbackURL) else {
                         completion(nil, "Could not form IP fallback URL.")
                         return
                     }
-                    downloadFrom(url: ipURL) { ipSpeed, ipError in
+                    self?.downloadFrom(url: ipURL) { ipSpeed, ipError in
                         if let ipError = ipError {
-                            // Everything failed
                             completion(nil, ipError)
                         } else {
                             completion(ipSpeed, nil)
                         }
                     }
                 } else {
-                    // Fallback domain succeeded
                     completion(speed, nil)
                 }
             }
             return
         }
         
-        // Otherwise, try the next Apple domain
+        // Try the next Apple host.
         let currentHost = hosts[0]
         let remainingHosts = Array(hosts.dropFirst())
         
         guard let url = URL(string: "https://\(currentHost)/speedtest") else {
-            // If URL can't form, skip to next
-            tryDownload(
-                hosts: remainingHosts,
-                fallbackURL: fallbackURL,
-                ipFallbackURL: ipFallbackURL,
-                completion: completion
-            )
+            // If URL formation fails, try the next host.
+            tryDownload(hosts: remainingHosts,
+                        fallbackURL: fallbackURL,
+                        ipFallbackURL: ipFallbackURL,
+                        completion: completion)
             return
         }
         
-        downloadFrom(url: url) { speed, error in
+        downloadFrom(url: url) { [weak self] speed, error in
             if let error = error {
                 print("Failed \(currentHost) with error: \(error). Trying next host...")
-                tryDownload(
-                    hosts: remainingHosts,
-                    fallbackURL: fallbackURL,
-                    ipFallbackURL: ipFallbackURL,
-                    completion: completion
-                )
+                self?.tryDownload(hosts: remainingHosts,
+                                  fallbackURL: fallbackURL,
+                                  ipFallbackURL: ipFallbackURL,
+                                  completion: completion)
             } else {
-                // Success
                 completion(speed, nil)
             }
         }
     }
     
+    /// Downloads data from the specified URL and calculates download speed in Mbps.
     private func downloadFrom(url: URL, completion: @escaping (Double?, String?) -> Void) {
         let startTime = CFAbsoluteTimeGetCurrent()
         let task = URLSession.shared.dataTask(with: url) { data, response, error in
@@ -222,8 +175,8 @@ struct SpeedTestView: View {
                 completion(nil, errorMsg)
                 return
             }
-            guard let data = data else {
-                let errorMsg = "No data from \(url.host ?? url.absoluteString)"
+            guard let data = data, !data.isEmpty else {
+                let errorMsg = "No data received from \(url.host ?? url.absoluteString)"
                 completion(nil, errorMsg)
                 return
             }
@@ -238,6 +191,7 @@ struct SpeedTestView: View {
     }
     
     // MARK: - Upload Test
+    /// Performs an upload test by sending data to a testing endpoint.
     private func performUploadTest(completion: @escaping (Double?) -> Void) {
         guard let url = URL(string: "https://httpbin.org/post") else {
             completion(nil)
@@ -272,6 +226,7 @@ struct SpeedTestView: View {
     }
     
     // MARK: - Latency Test
+    /// Measures latency by establishing a TCP connection to apple.com.
     private func performLatencyTest(completion: @escaping (Double?) -> Void) {
         let host = NWEndpoint.Host("apple.com")
         guard let port = NWEndpoint.Port(rawValue: 80) else {
@@ -303,5 +258,79 @@ struct SpeedTestView: View {
         }
         
         connection.start(queue: DispatchQueue.global())
+    }
+}
+
+// MARK: - SpeedTestView
+/// A SwiftUI view that displays speed test results and a control to start testing.
+struct SpeedTestView: View {
+    @StateObject private var manager = SpeedTestManager()
+    
+    var body: some View {
+        Form {
+            Section(header: Text("Speed Test Results")) {
+                HStack {
+                    Text("Download Speed:")
+                    Spacer()
+                    if let speed = manager.downloadSpeed {
+                        Text(String(format: "%.2f Mbps", speed))
+                    } else {
+                        Text("N/A")
+                    }
+                }
+                HStack {
+                    Text("Upload Speed:")
+                    Spacer()
+                    if let speed = manager.uploadSpeed {
+                        Text(String(format: "%.2f Mbps", speed))
+                    } else {
+                        Text("N/A")
+                    }
+                }
+                HStack {
+                    Text("Latency:")
+                    Spacer()
+                    if let latency = manager.latency {
+                        Text(String(format: "%.0f ms", latency))
+                    } else {
+                        Text("N/A")
+                    }
+                }
+            }
+            
+            if let errorMessage = manager.errorMessage {
+                Section {
+                    Text("Error: \(errorMessage)")
+                        .foregroundColor(.red)
+                }
+            }
+            
+            Section {
+                if manager.isTesting {
+                    HStack {
+                        Spacer()
+                        ProgressView("Testing...")
+                        Spacer()
+                    }
+                }
+                Button(action: {
+                    manager.startSpeedTest()
+                }) {
+                    Text("Start Speed Test")
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(manager.isTesting)
+            }
+        }
+        .navigationTitle("Speed Test")
+    }
+}
+
+// MARK: - Preview
+struct SpeedTestView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            SpeedTestView()
+        }
     }
 }
