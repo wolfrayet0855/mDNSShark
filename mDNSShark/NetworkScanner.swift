@@ -1,3 +1,5 @@
+//NetworkScanner.swift
+
 import SwiftUI
 import Network
 import Combine
@@ -29,56 +31,56 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         "_apple-mobdev2._tcp",
         "_adisk._tcp",
         "_time-machine._tcp",
-        "_airport._tcp",         // AirPort base station
+        "_airport._tcp",
         "_device-info._tcp",
-        "_services._dns-sd._udp", // DNS-SD meta-service
+        "_services._dns-sd._udp",
 
         // MARK: - Printing & Scanning
-        "_ipp._tcp",             // Internet Printing Protocol
-        "_ipps._tcp",            // Secure IPP
+        "_ipp._tcp",
+        "_ipps._tcp",
         "_printer._tcp",
-        "_pdl-datastream._tcp",  // HP Printer PDL
+        "_pdl-datastream._tcp",
         "_scanner._tcp",
 
         // MARK: - Media & Streaming
-        "_raop._tcp",            // AirPlay audio streaming
-        "_daap._tcp",            // iTunes DAAP
-        "_dacp._tcp",            // iTunes/Apple TV remote control
+        "_raop._tcp",
+        "_daap._tcp",
+        "_dacp._tcp",
         "_spotify-connect._tcp",
         "_googlecast._tcp",
 
         // MARK: - File Sharing & Sync
         "_bluetoothd2._tcp",
-        "_btsync._tcp",          // Resilio/BitTorrent Sync
-        "_distcc._tcp",          // Distributed C/C++ compiler
+        "_btsync._tcp",
+        "_distcc._tcp",
         "_webdav._tcp",
 
         // MARK: - Remote Screen / Management
-        "_rfb._tcp",             // VNC (Remote Frame Buffer)
+        "_rfb._tcp",
         "_remotemanagement._tcp",
 
         // MARK: - IoT / HomeKit / Presence
-        "_hap._tcp",             // HomeKit Accessory Protocol
+        "_hap._tcp",
         "_presence._tcp",
-        "_mqtt._tcp",            // MQTT broker/client
-        "_coap._udp",            // Constrained Application Protocol
+        "_mqtt._tcp",
+        "_coap._udp",
         "_peertalk._tcp",
 
         // MARK: - Security & Other
         "_time._udp",
         "_timedate._udp",
-        "_tcpchat._tcp",         // Example custom chat
-        "_acp-sync._tcp",        // Example Apple Config / sync
+        "_tcpchat._tcp",
+        "_acp-sync._tcp",
 
         // MARK: - Newly Added (Wireless / Common)
-        "_touch-able._tcp",      // (Newly added)
-        "_airpod._tcp",          // (Newly added)
-        "_teamviewer._tcp",      // (Newly added)
-        "_vnc._tcp",             // (Newly added; some VNC apps use _vnc._tcp instead of _rfb._tcp)
-        "_sftp-ssh._tcp",        // (Newly added)
-        "_octoprint._tcp",       // (Newly added; 3D printers)
-        "_xbmc-jsonrpc._tcp",    // (Newly added; Kodi/XBMC media center)
-        "_plexmediasvr._tcp"     // (Newly added; Plex media server)
+        "_touch-able._tcp",
+        "_airpod._tcp",
+        "_teamviewer._tcp",
+        "_vnc._tcp",
+        "_sftp-ssh._tcp",
+        "_octoprint._tcp",
+        "_xbmc-jsonrpc._tcp",
+        "_plexmediasvr._tcp"
     ]
     
     // Dedicated queue for Bonjour browser tasks.
@@ -168,7 +170,6 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
     // MARK: - Bonjour Scanning
     private func createAndStartBrowser(for serviceType: String) {
         let descriptor = NWBrowser.Descriptor.bonjour(type: serviceType, domain: nil)
-        // Choose network parameters based on service type.
         let parameters: NWParameters = serviceType.contains("_udp") ? .udp : .tcp
         let browser = NWBrowser(for: descriptor, using: parameters)
         let capturedServiceType: String = serviceType
@@ -178,8 +179,6 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
             self.logger.info("Bonjour browser for \(capturedServiceType) state: \(String(describing: state))")
             if case .failed(let error) = state {
                 self.logger.error("Bonjour browser for \(capturedServiceType) failed: \(error.localizedDescription)")
-                // Do NOT set self.isScanning = false here.
-                // This ensures the scan remains "in progress" for the full duration.
             }
         }
         
@@ -188,12 +187,10 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
             self.processBrowseResults(results)
         }
         
-        // Start the browser on the dedicated queue.
         browser.start(queue: bonjourQueue)
         bonjourBrowsers.append(browser)
     }
     
-    /// Processes the results returned by an NWBrowser.
     private func processBrowseResults(_ results: Set<NWBrowser.Result>) {
         for result in results {
             switch result.endpoint {
@@ -214,7 +211,6 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         }
     }
     
-    /// Attempts to resolve a discovered NetService.
     private func resolveService(name: String, type: String, domain: String) {
         let netService = NetService(domain: domain, type: type, name: name)
         netService.delegate = self
@@ -326,7 +322,7 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         }
     }
     
-    // MARK: - NetServiceDelegate Methods
+    // MARK: - NetServiceDelegate
     func netServiceDidResolveAddress(_ sender: NetService) {
         let key = ObjectIdentifier(sender)
         guard let deviceID = serviceToDeviceId[key],
@@ -419,7 +415,6 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         logger.error("Failed to resolve \(sender.name) with error: \(errorDict)")
     }
     
-    /// Helper to extract an IP address from Data.
     private func ipAddressFromData(_ data: Data) -> String? {
         var storage = sockaddr_storage()
         (data as NSData).getBytes(&storage, length: MemoryLayout<sockaddr_storage>.size)
@@ -442,3 +437,4 @@ class NetworkScanner: NSObject, ObservableObject, NetServiceDelegate {
         return nil
     }
 }
+

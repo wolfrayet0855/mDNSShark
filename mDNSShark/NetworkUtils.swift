@@ -1,3 +1,5 @@
+//NetworkUtils.swift
+
 import Foundation
 import Darwin
 
@@ -29,7 +31,6 @@ func getWiFiAddress() -> String? {
 func getLocalIPPrefix(for ip: String) -> String? {
     let parts = ip.split(separator: ".").map { String($0) }
     guard parts.count == 4 else { return nil }
-    // Assume a /24 subnet.
     return "\(parts[0]).\(parts[1]).\(parts[2])."
 }
 

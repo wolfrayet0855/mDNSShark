@@ -1,3 +1,5 @@
+//DNSServiceResolver.swift
+
 import Foundation
 import os
 
@@ -18,7 +20,6 @@ public typealias MyDNSServiceResolveReply = @convention(c) (
     UnsafeMutableRawPointer?
 ) -> Void
 
-// Helper class that wraps the completion and provides a lock for thread safety.
 private class DNSResolveContext {
     let completion: DNSResolveCompletion
     var hasCompleted = false
@@ -29,12 +30,12 @@ private class DNSResolveContext {
     }
 }
 
-private let dnsServiceResolveCallback: MyDNSServiceResolveReply = { sdRef, flags, interfaceIndex, errorCode, fullname, hosttarget, port, txtLen, txtRecord, context in
+private let dnsServiceResolveCallback: MyDNSServiceResolveReply = {
+    sdRef, flags, interfaceIndex, errorCode, fullname, hosttarget, port, txtLen, txtRecord, context in
+    
     guard let context = context else { return }
-    // Retrieve the DNSResolveContext without taking ownership immediately.
     let dnsContext = Unmanaged<DNSResolveContext>.fromOpaque(context).takeUnretainedValue()
     
-    // Synchronize access to ensure the completion is only executed once.
     dnsContext.lock.lock()
     if dnsContext.hasCompleted {
         dnsContext.lock.unlock()
@@ -51,7 +52,6 @@ private let dnsServiceResolveCallback: MyDNSServiceResolveReply = { sdRef, flags
         dnsLogger.error("DNSServiceResolve callback error: \(errorCode, privacy: .public)")
         dnsContext.completion(nil, nil)
     }
-    // Release the retained context now that we've called the completion.
     Unmanaged<DNSResolveContext>.fromOpaque(context).release()
 }
 
@@ -79,13 +79,13 @@ private func callDNSServiceResolve(serviceRef: inout DNSServiceRef?,
     ptr.initialize(to: serviceRef)
 
     let error: DNSServiceErrorType = functionPtr(ptr,
-                                                  tmpFlags,
-                                                  tmpInterfaceIndex,
-                                                  namePtr,
-                                                  typePtr,
-                                                  domainPtr,
-                                                  dnsServiceResolveCallback,
-                                                  context)
+                                                 tmpFlags,
+                                                 tmpInterfaceIndex,
+                                                 namePtr,
+                                                 typePtr,
+                                                 domainPtr,
+                                                 dnsServiceResolveCallback,
+                                                 context)
     serviceRef = ptr.pointee
     ptr.deinitialize(count: 1)
     ptr.deallocate()
@@ -96,7 +96,6 @@ private func callDNSServiceResolve(serviceRef: inout DNSServiceRef?,
 public class DNSServiceResolver {
     public static func resolve(name: String, type: String, domain: String, completion: @escaping DNSResolveCompletion) {
         var serviceRef: DNSServiceRef?
-        // Wrap the completion in a DNSResolveContext and retain it.
         let context = Unmanaged.passRetained(DNSResolveContext(completion)).toOpaque()
 
         let result: DNSServiceErrorType = name.withCString { namePtr in

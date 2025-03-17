@@ -1,3 +1,5 @@
+//  ContentView.swift
+//  mDNSShark
 import SwiftUI
 
 struct ContentView: View {

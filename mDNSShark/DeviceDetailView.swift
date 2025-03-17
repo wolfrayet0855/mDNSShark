@@ -1,3 +1,5 @@
+//  DeviceDetailView.swift
+
 import SwiftUI
 
 // MARK: - DeviceDetailView
@@ -34,7 +36,6 @@ struct DeviceDetailView: View {
     }
     
     /// If the remainder starts with "fe80::", return the link-local address.
-    /// If there's a dash, parse that out as "Additional Info."
     private var ipv6LinkLocal: String? {
         guard let remainder = remainderAfterAt, remainder.lowercased().hasPrefix("fe80::") else {
             return nil
@@ -155,3 +156,4 @@ struct DeviceDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+

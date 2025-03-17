@@ -1,3 +1,5 @@
+//Entry point for the mDNSShark application
+
 import SwiftUI
 
 @main

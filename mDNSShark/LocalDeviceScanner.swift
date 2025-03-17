@@ -1,3 +1,5 @@
+//LocalDeviceScanner.swift
+
 import Foundation
 import Network
 import os
@@ -16,13 +18,12 @@ class LocalDeviceScanner: ObservableObject {
         return nil
     }
     
-    /// Scans the local /24 subnet by iterating over each IP and invoking a dedicated scan for each.
+    /// Scans the local /24 subnet by iterating over each IP and attempting a TCP connection.
     func scanLocalSubnet(port: NWEndpoint.Port = NWEndpoint.Port(integerLiteral: 80), timeout: TimeInterval = 1.0) {
         guard let localPrefix = getLocalIPPrefix() else {
             logger.error("Failed to get local IP prefix.")
             return
         }
-        // Use the heuristic to determine the default gateway.
         let defaultGatewayIP = getDefaultGateway()
         logger.info("Default gateway (heuristic) detected: \(defaultGatewayIP ?? "unknown")")
         logger.info("Starting local subnet scan on prefix \(localPrefix)")
@@ -33,7 +34,6 @@ class LocalDeviceScanner: ObservableObject {
         
         for i in 1...254 {
             let ip = "\(localPrefix)\(i)"
-            // Skip the default gateway so it doesn't show as a discovered device.
             if let defaultGatewayIP = defaultGatewayIP, ip == defaultGatewayIP {
                 logger.debug("Skipping default gateway IP: \(ip)")
                 continue
@@ -56,7 +56,6 @@ class LocalDeviceScanner: ObservableObject {
         }
     }
     
-    /// Helper method that attempts a TCP connection to the given IP address.
     private func scanSingleIP(ip: String,
                               port: NWEndpoint.Port,
                               parameters: NWParameters,
@@ -65,7 +64,6 @@ class LocalDeviceScanner: ObservableObject {
         let host = NWEndpoint.Host(ip)
         let connection = NWConnection(host: host, port: port, using: parameters)
         
-        // Ensure the completion closure is only called once.
         let lock = NSLock()
         var didComplete = false
         func safeComplete(_ success: Bool) {
@@ -101,9 +99,6 @@ class LocalDeviceScanner: ObservableObject {
         }
     }
     
-    // MARK: - Helper Functions for IP Address Retrieval
-    
-    /// Retrieves the device's Wi‑Fi IP address.
     func getWiFiAddress() -> String? {
         var address: String?
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
@@ -137,7 +132,6 @@ class LocalDeviceScanner: ObservableObject {
         return address
     }
     
-    /// Returns the local IP prefix (first three octets followed by a dot) based on the Wi‑Fi address.
     func getLocalIPPrefix() -> String? {
         if let wifiAddress = getWiFiAddress() {
             return getLocalIPPrefix(for: wifiAddress)
@@ -145,7 +139,6 @@ class LocalDeviceScanner: ObservableObject {
         return nil
     }
     
-    /// Given an IPv4 address string, returns the /24 prefix (e.g. "192.168.1.").
     func getLocalIPPrefix(for ip: String) -> String? {
         let parts = ip.split(separator: ".")
         if parts.count == 4 {

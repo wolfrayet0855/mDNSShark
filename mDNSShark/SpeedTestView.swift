@@ -2,327 +2,269 @@
 //
 //  SpeedTestView.swift
 //  mDNSShark
-//
-//  Created by user on 3/15/25.
-//
-//
+////
 //  SpeedTestView.swift
 //  mDNSShark
 //
-//  Created by user on 3/15/25.
-//
-
 import SwiftUI
 import Network
+import Charts
 
 // MARK: - SpeedTestManager
-/// An ObservableObject that manages network speed tests for download, upload, and latency.
 class SpeedTestManager: ObservableObject {
-    @Published var downloadSpeed: Double?
-    @Published var uploadSpeed: Double?
-    @Published var latency: Double?
     @Published var isTesting: Bool = false
+    @Published var downloadSpeedMbps: Double?
+    @Published var uploadSpeedMbps: Double?
+    @Published var latencyMs: Double?
     @Published var errorMessage: String?
-    
-    // MARK: - Test Endpoints
-    /// List of Apple speed test hosts.
-    private let appleSpeedTestHosts = [
-        "speedtest-sjc1.apple.com",
-        "speedtest-lax.apple.com",
-        "speedtest-lhr.apple.com",
-        "speedtest-syd.apple.com"
-    ]
-    
-    /// Fallback CDN URL.
-    private let fallbackTestURL = "https://ipv4.ikoula.testdebit.info/10M.iso"
-    
-    /// Final IP-based test (plain HTTP).
-    /// Note: This endpoint requires an ATS exception in your Info.plist.
-    private let ipTestURL = "http://1.1.1.1/"
-    
-    // MARK: - Public API
-    /// Starts the concurrent speed tests.
+
+    // Using 1.1.1.1 for demonstration.
+    // In reality, 1.1.1.1 is a DNS server that won't return large files.
+    private let downloadTestURL = URL(string: "https://1.1.1.1")!
+    private let uploadTestURL   = URL(string: "https://1.1.1.1")!
+    private let pingHost        = NWEndpoint.Host("1.1.1.1")
+    private let pingPort        = NWEndpoint.Port(rawValue: 53)!
+
+    /// Start all tests in parallel using a DispatchGroup.
     func startSpeedTest() {
-        // Reset test results
         DispatchQueue.main.async {
             self.isTesting = true
             self.errorMessage = nil
-            self.downloadSpeed = nil
-            self.uploadSpeed = nil
-            self.latency = nil
+            self.downloadSpeedMbps = nil
+            self.uploadSpeedMbps = nil
+            self.latencyMs = nil
         }
-        
+
         let group = DispatchGroup()
-        
-        // Download Test
+
+        // 1) Download
         group.enter()
-        performDownloadTest { [weak self] speed in
+        performDownloadTest { [weak self] speed, err in
             DispatchQueue.main.async {
-                self?.downloadSpeed = speed
+                if let err = err {
+                    self?.errorMessage = "Download error: \(err)"
+                } else {
+                    self?.downloadSpeedMbps = speed
+                }
             }
             group.leave()
         }
-        
-        // Upload Test
+
+        // 2) Upload
         group.enter()
-        performUploadTest { [weak self] speed in
+        performUploadTest { [weak self] speed, err in
             DispatchQueue.main.async {
-                self?.uploadSpeed = speed
+                if let err = err {
+                    self?.errorMessage = "Upload error: \(err)"
+                } else {
+                    self?.uploadSpeedMbps = speed
+                }
             }
             group.leave()
         }
-        
-        // Latency Test
+
+        // 3) Latency
         group.enter()
-        performLatencyTest { [weak self] latencyValue in
+        performLatencyTest { [weak self] latency, err in
             DispatchQueue.main.async {
-                self?.latency = latencyValue
+                if let err = err {
+                    self?.errorMessage = "Latency error: \(err)"
+                } else {
+                    self?.latencyMs = latency
+                }
             }
             group.leave()
         }
-        
+
+        // When all finish
         group.notify(queue: .main) { [weak self] in
             self?.isTesting = false
         }
     }
-    
-    // MARK: - Download Test
-    /// Performs a download test using multiple endpoints with fallback.
-    private func performDownloadTest(completion: @escaping (Double?) -> Void) {
-        tryDownload(
-            hosts: appleSpeedTestHosts,
-            fallbackURL: fallbackTestURL,
-            ipFallbackURL: ipTestURL
-        ) { [weak self] speed, error in
-            if let error = error {
-                DispatchQueue.main.async {
-                    self?.errorMessage = error
-                }
-                completion(nil)
-            } else {
-                completion(speed)
-            }
-        }
-    }
-    
-    /// Recursively attempts to download from a list of hosts; if all fail, it uses fallback URLs.
-    private func tryDownload(
-        hosts: [String],
-        fallbackURL: String,
-        ipFallbackURL: String,
-        completion: @escaping (Double?, String?) -> Void
-    ) {
-        // If no more Apple hosts left, try the fallback URL.
-        guard !hosts.isEmpty else {
-            guard let fallback = URL(string: fallbackURL) else {
-                completion(nil, "Could not form fallback URL.")
-                return
-            }
-            downloadFrom(url: fallback) { [weak self] speed, error in
-                if let error = error {
-                    print("Failed fallback domain with error: \(error). Trying IP-based test next...")
-                    guard let ipURL = URL(string: ipFallbackURL) else {
-                        completion(nil, "Could not form IP fallback URL.")
-                        return
-                    }
-                    self?.downloadFrom(url: ipURL) { ipSpeed, ipError in
-                        if let ipError = ipError {
-                            completion(nil, ipError)
-                        } else {
-                            completion(ipSpeed, nil)
-                        }
-                    }
-                } else {
-                    completion(speed, nil)
-                }
-            }
-            return
-        }
-        
-        // Try the next Apple host.
-        let currentHost = hosts[0]
-        let remainingHosts = Array(hosts.dropFirst())
-        
-        guard let url = URL(string: "https://\(currentHost)/speedtest") else {
-            // If URL formation fails, try the next host.
-            tryDownload(hosts: remainingHosts,
-                        fallbackURL: fallbackURL,
-                        ipFallbackURL: ipFallbackURL,
-                        completion: completion)
-            return
-        }
-        
-        downloadFrom(url: url) { [weak self] speed, error in
-            if let error = error {
-                print("Failed \(currentHost) with error: \(error). Trying next host...")
-                self?.tryDownload(hosts: remainingHosts,
-                                  fallbackURL: fallbackURL,
-                                  ipFallbackURL: ipFallbackURL,
-                                  completion: completion)
-            } else {
-                completion(speed, nil)
-            }
-        }
-    }
-    
-    /// Downloads data from the specified URL and calculates download speed in Mbps.
-    private func downloadFrom(url: URL, completion: @escaping (Double?, String?) -> Void) {
+}
+
+// MARK: - Internal test methods
+extension SpeedTestManager {
+
+    // MARK: Download Test
+    private func performDownloadTest(completion: @escaping (Double?, String?) -> Void) {
         let startTime = CFAbsoluteTimeGetCurrent()
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+        let task = URLSession.shared.dataTask(with: downloadTestURL) { data, response, error in
             let endTime = CFAbsoluteTimeGetCurrent()
+
             if let error = error {
-                let errorMsg = "Download from \(url.host ?? url.absoluteString) failed: \(error.localizedDescription)"
-                completion(nil, errorMsg)
+                completion(nil, error.localizedDescription)
                 return
             }
             guard let data = data, !data.isEmpty else {
-                let errorMsg = "No data received from \(url.host ?? url.absoluteString)"
-                completion(nil, errorMsg)
+                completion(nil, "No data received from 1.1.1.1.")
                 return
             }
+
+            // Calculate approximate speed
             let elapsed = endTime - startTime
             let bytes = Double(data.count)
             let bits = bytes * 8.0
-            let speedBps = bits / elapsed
-            let speedMbps = speedBps / 1_000_000
-            completion(speedMbps, nil)
+            let bps = bits / elapsed
+            let mbps = bps / 1_000_000.0
+            completion(mbps, nil)
         }
         task.resume()
     }
-    
-    // MARK: - Upload Test
-    /// Performs an upload test by sending data to a testing endpoint.
-    private func performUploadTest(completion: @escaping (Double?) -> Void) {
-        guard let url = URL(string: "https://httpbin.org/post") else {
-            completion(nil)
-            return
-        }
-        let dataSize = 5 * 1024 * 1024 // 5 MB
+
+    // MARK: Upload Test
+    private func performUploadTest(completion: @escaping (Double?, String?) -> Void) {
+        // Attempting to POST ~2 MB of data to 1.1.1.1
+        // In reality, 1.1.1.1 may not handle large POST data.
+        let dataSize = 2 * 1024 * 1024
         let uploadData = Data(count: dataSize)
-        
-        var request = URLRequest(url: url)
+
+        var request = URLRequest(url: uploadTestURL)
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        
+
         let startTime = CFAbsoluteTimeGetCurrent()
-        let task = URLSession.shared.uploadTask(with: request, from: uploadData) { data, response, error in
+        let task = URLSession.shared.uploadTask(with: request, from: uploadData) { _, _, error in
             let endTime = CFAbsoluteTimeGetCurrent()
+
             if let error = error {
-                print("Upload test error: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self.errorMessage = error.localizedDescription
-                }
-                completion(nil)
+                completion(nil, error.localizedDescription)
                 return
             }
+
             let elapsed = endTime - startTime
             let bytes = Double(dataSize)
             let bits = bytes * 8.0
-            let speedBps = bits / elapsed
-            let speedMbps = speedBps / 1_000_000
-            completion(speedMbps)
+            let bps = bits / elapsed
+            let mbps = bps / 1_000_000.0
+            completion(mbps, nil)
         }
         task.resume()
     }
-    
-    // MARK: - Latency Test
-    /// Measures latency by establishing a TCP connection to apple.com.
-    private func performLatencyTest(completion: @escaping (Double?) -> Void) {
-        let host = NWEndpoint.Host("apple.com")
-        guard let port = NWEndpoint.Port(rawValue: 80) else {
-            completion(nil)
-            return
-        }
-        let parameters = NWParameters.tcp
-        let connection = NWConnection(host: host, port: port, using: parameters)
-        
+
+    // MARK: Latency (Ping)
+    private func performLatencyTest(completion: @escaping (Double?, String?) -> Void) {
+        let connection = NWConnection(host: pingHost, port: pingPort, using: .udp)
         let startTime = CFAbsoluteTimeGetCurrent()
-        connection.stateUpdateHandler = { state in
-            switch state {
+        connection.stateUpdateHandler = { newState in
+            switch newState {
             case .ready:
                 let endTime = CFAbsoluteTimeGetCurrent()
-                let latencySeconds = endTime - startTime
-                let latencyMs = latencySeconds * 1000.0
+                let elapsedMs = (endTime - startTime) * 1000.0
                 connection.cancel()
-                completion(latencyMs)
+                completion(elapsedMs, nil)
             case .failed(let error):
-                print("Latency test failed: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self.errorMessage = error.localizedDescription
-                }
                 connection.cancel()
-                completion(nil)
+                completion(nil, error.localizedDescription)
             default:
                 break
             }
         }
-        
-        connection.start(queue: DispatchQueue.global())
+        connection.start(queue: .global())
     }
 }
 
-// MARK: - SpeedTestView
-/// A SwiftUI view that displays speed test results and a control to start testing.
+// MARK: - Data Model for Chart
+struct SpeedChartData: Identifiable {
+    let id = UUID()
+    let label: String  // e.g. "Download", "Upload", "Latency"
+    let value: Double  // numeric value (Mbps or ms)
+}
+
+// MARK: - SpeedTestView (Bar Chart)
 struct SpeedTestView: View {
     @StateObject private var manager = SpeedTestManager()
-    
+
     var body: some View {
-        Form {
-            Section(header: Text("Speed Test Results")) {
-                HStack {
-                    Text("Download Speed:")
-                    Spacer()
-                    if let speed = manager.downloadSpeed {
-                        Text(String(format: "%.2f Mbps", speed))
-                    } else {
-                        Text("N/A")
-                    }
-                }
-                HStack {
-                    Text("Upload Speed:")
-                    Spacer()
-                    if let speed = manager.uploadSpeed {
-                        Text(String(format: "%.2f Mbps", speed))
-                    } else {
-                        Text("N/A")
-                    }
-                }
-                HStack {
-                    Text("Latency:")
-                    Spacer()
-                    if let latency = manager.latency {
-                        Text(String(format: "%.0f ms", latency))
-                    } else {
-                        Text("N/A")
-                    }
-                }
+        VStack {
+            if manager.isTesting {
+                ProgressView("Testing…")
+                    .padding()
             }
-            
-            if let errorMessage = manager.errorMessage {
-                Section {
-                    Text("Error: \(errorMessage)")
-                        .foregroundColor(.red)
-                }
+
+            Button("Start Speed Test") {
+                manager.startSpeedTest()
             }
-            
-            Section {
-                if manager.isTesting {
+            .font(.headline)
+            .padding()
+            .disabled(manager.isTesting)
+
+            if let error = manager.errorMessage {
+                Text("Error: \(error)")
+                    .foregroundColor(.red)
+                    .padding()
+            }
+
+            List {
+                Section(header: Text("Results")) {
                     HStack {
+                        Text("Download Speed")
                         Spacer()
-                        ProgressView("Testing...")
+                        Text(manager.downloadSpeedMbps != nil
+                             ? String(format: "%.2f Mbps", manager.downloadSpeedMbps!)
+                             : "N/A")
+                    }
+                    HStack {
+                        Text("Upload Speed")
                         Spacer()
+                        Text(manager.uploadSpeedMbps != nil
+                             ? String(format: "%.2f Mbps", manager.uploadSpeedMbps!)
+                             : "N/A")
+                    }
+                    HStack {
+                        Text("Latency")
+                        Spacer()
+                        Text(manager.latencyMs != nil
+                             ? String(format: "%.0f ms", manager.latencyMs!)
+                             : "N/A")
                     }
                 }
-                Button(action: {
-                    manager.startSpeedTest()
-                }) {
-                    Text("Start Speed Test")
-                        .frame(maxWidth: .infinity)
+
+                if let dataPoints = buildDataPoints() {
+                    Section(header: Text("Bar Chart (Final)")) {
+                        Chart(dataPoints) {
+                            BarMark(
+                                x: .value("Test", $0.label),
+                                y: .value("Value", $0.value)
+                            )
+                        }
+                        .frame(height: 200)
+                        .padding(.vertical)
+                        .chartYAxis {
+                            AxisMarks(position: .leading)
+                        }
+                        .chartXAxis {
+                            AxisMarks(position: .bottom)
+                        }
+
+                        // NOTE: Download/Upload are in Mbps, Latency is in ms.
+                        // They share the same axis here, which can be misleading.
+                    }
                 }
-                .disabled(manager.isTesting)
             }
         }
         .navigationTitle("Speed Test")
+    }
+
+    /// Build data points for the bar chart.
+    private func buildDataPoints() -> [SpeedChartData]? {
+        if manager.downloadSpeedMbps == nil &&
+           manager.uploadSpeedMbps == nil &&
+           manager.latencyMs == nil {
+            return nil
+        }
+
+        var points = [SpeedChartData]()
+        if let dl = manager.downloadSpeedMbps {
+            points.append(SpeedChartData(label: "Download", value: dl))
+        }
+        if let ul = manager.uploadSpeedMbps {
+            points.append(SpeedChartData(label: "Upload", value: ul))
+        }
+        if let lat = manager.latencyMs {
+            points.append(SpeedChartData(label: "Latency (ms)", value: lat))
+        }
+        return points
     }
 }
 
@@ -334,3 +276,4 @@ struct SpeedTestView_Previews: PreviewProvider {
         }
     }
 }
+
