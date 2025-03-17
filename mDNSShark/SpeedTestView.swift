@@ -1,11 +1,8 @@
 
-//
-//  SpeedTestView.swift
-//  mDNSShark
-////
 //  SpeedTestView.swift
 //  mDNSShark
 //
+
 import SwiftUI
 import Network
 import Charts
@@ -18,8 +15,7 @@ class SpeedTestManager: ObservableObject {
     @Published var latencyMs: Double?
     @Published var errorMessage: String?
 
-    // Using 1.1.1.1 for demonstration.
-    // In reality, 1.1.1.1 is a DNS server that won't return large files.
+    // Using 1.1.1.1 for demonstration. (Minimal responses, not suitable for big file tests)
     private let downloadTestURL = URL(string: "https://1.1.1.1")!
     private let uploadTestURL   = URL(string: "https://1.1.1.1")!
     private let pingHost        = NWEndpoint.Host("1.1.1.1")
@@ -63,7 +59,7 @@ class SpeedTestManager: ObservableObject {
             group.leave()
         }
 
-        // 3) Latency
+        // 3) Latency (remains available in the textual results)
         group.enter()
         performLatencyTest { [weak self] latency, err in
             DispatchQueue.main.async {
@@ -91,7 +87,6 @@ extension SpeedTestManager {
         let startTime = CFAbsoluteTimeGetCurrent()
         let task = URLSession.shared.dataTask(with: downloadTestURL) { data, response, error in
             let endTime = CFAbsoluteTimeGetCurrent()
-
             if let error = error {
                 completion(nil, error.localizedDescription)
                 return
@@ -100,8 +95,6 @@ extension SpeedTestManager {
                 completion(nil, "No data received from 1.1.1.1.")
                 return
             }
-
-            // Calculate approximate speed
             let elapsed = endTime - startTime
             let bytes = Double(data.count)
             let bits = bytes * 8.0
@@ -114,24 +107,18 @@ extension SpeedTestManager {
 
     // MARK: Upload Test
     private func performUploadTest(completion: @escaping (Double?, String?) -> Void) {
-        // Attempting to POST ~2 MB of data to 1.1.1.1
-        // In reality, 1.1.1.1 may not handle large POST data.
         let dataSize = 2 * 1024 * 1024
         let uploadData = Data(count: dataSize)
-
         var request = URLRequest(url: uploadTestURL)
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-
         let startTime = CFAbsoluteTimeGetCurrent()
         let task = URLSession.shared.uploadTask(with: request, from: uploadData) { _, _, error in
             let endTime = CFAbsoluteTimeGetCurrent()
-
             if let error = error {
                 completion(nil, error.localizedDescription)
                 return
             }
-
             let elapsed = endTime - startTime
             let bytes = Double(dataSize)
             let bits = bytes * 8.0
@@ -167,16 +154,36 @@ extension SpeedTestManager {
 // MARK: - Data Model for Chart
 struct SpeedChartData: Identifiable {
     let id = UUID()
-    let label: String  // e.g. "Download", "Upload", "Latency"
-    let value: Double  // numeric value (Mbps or ms)
+    let label: String  // e.g. "Download", "Upload"
+    let value: Double  // numeric value in Mbps
 }
 
-// MARK: - SpeedTestView (Bar Chart)
+// MARK: - SpeedTestView
 struct SpeedTestView: View {
     @StateObject private var manager = SpeedTestManager()
+    @State private var showCloudflareTip: Bool = true  // Controls showing/hiding the info banner
 
     var body: some View {
         VStack {
+            // Info Banner
+            if showCloudflareTip {
+                HStack {
+                    Image(systemName: "info.circle")
+                    Text("Using Cloudflare's DNS server (1.1.1.1). Not suitable for large file downloads.")
+                        .font(.subheadline)
+                    Spacer()
+                    Button(action: {
+                        showCloudflareTip = false
+                    }) {
+                        Image(systemName: "xmark.circle")
+                    }
+                }
+                .padding()
+                .background(Color.yellow.opacity(0.2))
+                .cornerRadius(8)
+                .padding([.leading, .trailing])
+            }
+
             if manager.isTesting {
                 ProgressView("Testing…")
                     .padding()
@@ -220,25 +227,30 @@ struct SpeedTestView: View {
                     }
                 }
 
+                // Horizontal Bar Chart showing Download and Upload speeds with colored bars.
                 if let dataPoints = buildDataPoints() {
                     Section(header: Text("Bar Chart (Final)")) {
                         Chart(dataPoints) {
                             BarMark(
-                                x: .value("Test", $0.label),
-                                y: .value("Value", $0.value)
+                                x: .value("Value", $0.value),
+                                y: .value("Test", $0.label)
                             )
+                            .foregroundStyle(colorForSpeed($0.value))
                         }
                         .frame(height: 200)
                         .padding(.vertical)
+                        .chartXAxis {
+                            AxisMarks(position: .bottom) { value in
+                                if let doubleValue = value.as(Double.self) {
+                                    AxisValueLabel("\(doubleValue, specifier: "%.0f") Mbps")
+                                }
+                                AxisTick()
+                                AxisGridLine()
+                            }
+                        }
                         .chartYAxis {
                             AxisMarks(position: .leading)
                         }
-                        .chartXAxis {
-                            AxisMarks(position: .bottom)
-                        }
-
-                        // NOTE: Download/Upload are in Mbps, Latency is in ms.
-                        // They share the same axis here, which can be misleading.
                     }
                 }
             }
@@ -246,14 +258,11 @@ struct SpeedTestView: View {
         .navigationTitle("Speed Test")
     }
 
-    /// Build data points for the bar chart.
+    /// Build data points for the bar chart using only download and upload speeds.
     private func buildDataPoints() -> [SpeedChartData]? {
-        if manager.downloadSpeedMbps == nil &&
-           manager.uploadSpeedMbps == nil &&
-           manager.latencyMs == nil {
+        if manager.downloadSpeedMbps == nil && manager.uploadSpeedMbps == nil {
             return nil
         }
-
         var points = [SpeedChartData]()
         if let dl = manager.downloadSpeedMbps {
             points.append(SpeedChartData(label: "Download", value: dl))
@@ -261,10 +270,18 @@ struct SpeedTestView: View {
         if let ul = manager.uploadSpeedMbps {
             points.append(SpeedChartData(label: "Upload", value: ul))
         }
-        if let lat = manager.latencyMs {
-            points.append(SpeedChartData(label: "Latency (ms)", value: lat))
-        }
         return points
+    }
+    
+    /// Determines the bar color based on speed: red for <10 Mbps, yellow for <50 Mbps, and green otherwise.
+    private func colorForSpeed(_ speed: Double) -> Color {
+        if speed < 10 {
+            return .red
+        } else if speed < 50 {
+            return .yellow
+        } else {
+            return .green
+        }
     }
 }
 
@@ -276,4 +293,3 @@ struct SpeedTestView_Previews: PreviewProvider {
         }
     }
 }
-
