@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "mDNSx1.png",
+      "filename" : "mDNS-1.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "mDNSx2.png",
+      "filename" : "mDNS-2.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "mDNSx3.png",
+      "filename" : "mDNS-3.png",
       "idiom" : "universal",
       "scale" : "3x"
     }
