@@ -1,7 +1,8 @@
-
+//
 //  SpeedTestView.swift
 //  mDNSShark
 //
+
 import SwiftUI
 import Network
 import Charts
@@ -23,7 +24,7 @@ class SpeedTestManager: ObservableObject {
     @Published var latencyMs: Double?
     @Published var errorMessage: String?
 
-    // Test file endpoint on a robust provider.
+    // Test file endpoint on a robust provider (OVH server).
     private let testFileURL = URL(string: "https://proof.ovh.net/files/10Mb.dat")!
     
     // Configuration
@@ -91,7 +92,7 @@ extension SpeedTestManager {
                             let (data, _) = try await URLSession.shared.data(from: self.testFileURL)
                             await accumulator.add(data.count)
                         } catch {
-                            // In a production app, you might retry or handle errors here
+                            // In production, you might retry or handle errors here.
                             break
                         }
                     }
@@ -103,7 +104,7 @@ extension SpeedTestManager {
         let actualEndTime = CFAbsoluteTimeGetCurrent()
         let elapsed = actualEndTime - startTime
         
-        // Safely read total bytes from the actor
+        // Safely read total bytes from the actor.
         let totalBytesTransferred = await accumulator.total
         let bits = Double(totalBytesTransferred) * 8.0
         let mbps = bits / elapsed / 1_000_000.0
@@ -117,7 +118,7 @@ extension SpeedTestManager {
         
         let accumulator = ByteAccumulator()
 
-        // Prepare 2 MB payload for each POST
+        // Prepare 2 MB payload for each POST.
         let dataSize = 2 * 1024 * 1024
         let uploadData = Data(count: dataSize)
         var request = URLRequest(url: testFileURL)
@@ -159,7 +160,7 @@ extension SpeedTestManager {
                     let start = CFAbsoluteTimeGetCurrent()
                     _ = try await URLSession.shared.data(for: request)
                     let end = CFAbsoluteTimeGetCurrent()
-                    return (end - start) * 1000.0 // Convert to ms
+                    return (end - start) * 1000.0 // Convert to ms.
                 }
             }
             var results = [Double]()
@@ -169,7 +170,7 @@ extension SpeedTestManager {
             return results
         }
         
-        // Use median to reduce outlier impact
+        // Use median to reduce the impact of outliers.
         let sorted = latencies.sorted()
         let median = sorted[latencies.count / 2]
         return median
@@ -190,11 +191,11 @@ struct SpeedTestView: View {
 
     var body: some View {
         VStack {
-            // Info Banner
+            // Info Banner with server location note.
             if showInfoBanner {
                 HStack {
                     Image(systemName: "info.circle")
-                    Text("Latency is measured first (idle), then timed concurrency for throughput. This prevents HEAD from competing with big transfers.")
+                    Text("Latency is measured first (idle) to avoid interference with throughput tests. Test server: proof.ovh.net (OVH, typically in Europe). Your physical distance from the server can impact results.")
                         .font(.subheadline)
                     Spacer()
                     Button {
