@@ -1,14 +1,21 @@
 
-//
 //  SpeedTestView.swift
 //  mDNSShark
 //
-
 import SwiftUI
 import Network
 import Charts
 
-// MARK: - SpeedTestManager
+// MARK: - An actor for accumulating byte counts in a concurrency-safe way
+actor ByteAccumulator {
+    private(set) var total: Int = 0
+    
+    func add(_ bytes: Int) {
+        total += bytes
+    }
+}
+
+// MARK: - SpeedTestManager using async/await for Timed Concurrency
 class SpeedTestManager: ObservableObject {
     @Published var isTesting: Bool = false
     @Published var downloadSpeedMbps: Double?
@@ -16,139 +23,156 @@ class SpeedTestManager: ObservableObject {
     @Published var latencyMs: Double?
     @Published var errorMessage: String?
 
-    // Updated URL for download, upload, and latency tests.
+    // Test file endpoint on a robust provider.
     private let testFileURL = URL(string: "https://proof.ovh.net/files/10Mb.dat")!
     
-    /// Start all tests in parallel using a DispatchGroup.
+    // Configuration
+    private let downloadConcurrency = 8
+    private let uploadConcurrency = 8
+    private let latencyIterations = 5
+    
+    // Timed test duration (seconds). Adjust for more accuracy.
+    private let testDuration: TimeInterval = 10
+
     func startSpeedTest() {
-        DispatchQueue.main.async {
-            self.isTesting = true
-            self.errorMessage = nil
-            self.downloadSpeedMbps = nil
-            self.uploadSpeedMbps = nil
-            self.latencyMs = nil
-        }
-
-        let group = DispatchGroup()
-
-        // 1) Download Test
-        group.enter()
-        performDownloadTest { [weak self] speed, err in
-            DispatchQueue.main.async {
-                if let err = err {
-                    self?.errorMessage = "Download error: \(err)"
-                } else {
-                    self?.downloadSpeedMbps = speed
+        Task {
+            do {
+                await MainActor.run {
+                    self.isTesting = true
+                    self.errorMessage = nil
+                    self.downloadSpeedMbps = nil
+                    self.uploadSpeedMbps = nil
+                    self.latencyMs = nil
+                }
+                
+                // 1) Measure idle latency FIRST (no load)
+                let latencyResult = try await performMultipleLatencyTests()
+                
+                // 2) Then do the big timed download
+                let downloadResult = try await performTimedConcurrentDownload()
+                
+                // 3) Then do the big timed upload
+                let uploadResult = try await performTimedConcurrentUpload()
+                
+                // Update UI
+                await MainActor.run {
+                    self.latencyMs = latencyResult
+                    self.downloadSpeedMbps = downloadResult
+                    self.uploadSpeedMbps = uploadResult
+                    self.isTesting = false
+                }
+                
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                    self.isTesting = false
                 }
             }
-            group.leave()
-        }
-
-        // 2) Upload Test
-        group.enter()
-        performUploadTest { [weak self] speed, err in
-            DispatchQueue.main.async {
-                if let err = err {
-                    self?.errorMessage = "Upload error: \(err)"
-                } else {
-                    self?.uploadSpeedMbps = speed
-                }
-            }
-            group.leave()
-        }
-
-        // 3) Latency Test (HEAD Request)
-        group.enter()
-        performLatencyTest { [weak self] latency, err in
-            DispatchQueue.main.async {
-                if let err = err {
-                    self?.errorMessage = "Latency error: \(err)"
-                } else {
-                    self?.latencyMs = latency
-                }
-            }
-            group.leave()
-        }
-
-        // When all tests finish, mark testing as done.
-        group.notify(queue: .main) { [weak self] in
-            self?.isTesting = false
         }
     }
 }
 
-// MARK: - Internal test methods
+// MARK: - Timed Download / Upload / Latency Methods
 extension SpeedTestManager {
-
-    // MARK: Download Test
-    private func performDownloadTest(completion: @escaping (Double?, String?) -> Void) {
+    
+    // MARK: Timed Download Test
+    private func performTimedConcurrentDownload() async throws -> Double {
         let startTime = CFAbsoluteTimeGetCurrent()
-        let task = URLSession.shared.dataTask(with: testFileURL) { data, response, error in
-            let endTime = CFAbsoluteTimeGetCurrent()
-            if let error = error {
-                completion(nil, error.localizedDescription)
-                return
-            }
-            guard let data = data, !data.isEmpty else {
-                completion(nil, "No data received from test file.")
-                return
-            }
-            let elapsed = endTime - startTime
-            let bytes = Double(data.count)
-            let bits = bytes * 8.0
-            let bps = bits / elapsed
-            let mbps = bps / 1_000_000.0
-            completion(mbps, nil)
-        }
-        task.resume()
-    }
+        let endTime = startTime + testDuration
+        
+        // Use an actor to safely accumulate byte counts from multiple tasks.
+        let accumulator = ByteAccumulator()
 
-    // MARK: Upload Test
-    private func performUploadTest(completion: @escaping (Double?, String?) -> Void) {
-        // Prepare a 2MB data payload.
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<downloadConcurrency {
+                group.addTask {
+                    while CFAbsoluteTimeGetCurrent() < endTime {
+                        do {
+                            let (data, _) = try await URLSession.shared.data(from: self.testFileURL)
+                            await accumulator.add(data.count)
+                        } catch {
+                            // In a production app, you might retry or handle errors here
+                            break
+                        }
+                    }
+                }
+            }
+            try await group.waitForAll()
+        }
+        
+        let actualEndTime = CFAbsoluteTimeGetCurrent()
+        let elapsed = actualEndTime - startTime
+        
+        // Safely read total bytes from the actor
+        let totalBytesTransferred = await accumulator.total
+        let bits = Double(totalBytesTransferred) * 8.0
+        let mbps = bits / elapsed / 1_000_000.0
+        return mbps
+    }
+    
+    // MARK: Timed Upload Test
+    private func performTimedConcurrentUpload() async throws -> Double {
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let endTime = startTime + testDuration
+        
+        let accumulator = ByteAccumulator()
+
+        // Prepare 2 MB payload for each POST
         let dataSize = 2 * 1024 * 1024
         let uploadData = Data(count: dataSize)
         var request = URLRequest(url: testFileURL)
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        let startTime = CFAbsoluteTimeGetCurrent()
-        let task = URLSession.shared.uploadTask(with: request, from: uploadData) { _, _, error in
-            let endTime = CFAbsoluteTimeGetCurrent()
-            if let error = error {
-                completion(nil, error.localizedDescription)
-                return
-            }
-            let elapsed = endTime - startTime
-            let bytes = Double(dataSize)
-            let bits = bytes * 8.0
-            let bps = bits / elapsed
-            let mbps = bps / 1_000_000.0
-            completion(mbps, nil)
-        }
-        task.resume()
-    }
-
-    // MARK: Latency Test using HEAD Request
-    private func performLatencyTest(completion: @escaping (Double?, String?) -> Void) {
-        var request = URLRequest(url: testFileURL)
-        request.httpMethod = "HEAD"
         
-        let startTime = CFAbsoluteTimeGetCurrent()
-        
-        let task = URLSession.shared.dataTask(with: request) { _, _, error in
-            let endTime = CFAbsoluteTimeGetCurrent()
-            let measuredLatency = (endTime - startTime) * 1000.0  // Convert seconds to milliseconds
-            
-            DispatchQueue.main.async {
-                if let error = error {
-                    completion(nil, error.localizedDescription)
-                } else {
-                    completion(measuredLatency, nil)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<uploadConcurrency {
+                group.addTask {
+                    while CFAbsoluteTimeGetCurrent() < endTime {
+                        do {
+                            _ = try await URLSession.shared.upload(for: request, from: uploadData)
+                            await accumulator.add(dataSize)
+                        } catch {
+                            break
+                        }
+                    }
                 }
             }
+            try await group.waitForAll()
         }
         
-        task.resume()
+        let actualEndTime = CFAbsoluteTimeGetCurrent()
+        let elapsed = actualEndTime - startTime
+        
+        let totalBytesTransferred = await accumulator.total
+        let bits = Double(totalBytesTransferred) * 8.0
+        let mbps = bits / elapsed / 1_000_000.0
+        return mbps
+    }
+    
+    // MARK: Latency Test (Median of Several HEAD requests)
+    private func performMultipleLatencyTests() async throws -> Double {
+        let latencies = try await withThrowingTaskGroup(of: Double.self) { group -> [Double] in
+            for _ in 0..<latencyIterations {
+                group.addTask {
+                    var request = URLRequest(url: self.testFileURL)
+                    request.httpMethod = "HEAD"
+                    let start = CFAbsoluteTimeGetCurrent()
+                    _ = try await URLSession.shared.data(for: request)
+                    let end = CFAbsoluteTimeGetCurrent()
+                    return (end - start) * 1000.0 // Convert to ms
+                }
+            }
+            var results = [Double]()
+            for try await latency in group {
+                results.append(latency)
+            }
+            return results
+        }
+        
+        // Use median to reduce outlier impact
+        let sorted = latencies.sorted()
+        let median = sorted[latencies.count / 2]
+        return median
     }
 }
 
@@ -162,27 +186,27 @@ struct SpeedChartData: Identifiable {
 // MARK: - SpeedTestView
 struct SpeedTestView: View {
     @StateObject private var manager = SpeedTestManager()
-    @State private var showCloudflareTip: Bool = true  // Controls showing/hiding the info banner
+    @State private var showInfoBanner: Bool = true
 
     var body: some View {
         VStack {
             // Info Banner
-            if showCloudflareTip {
+            if showInfoBanner {
                 HStack {
                     Image(systemName: "info.circle")
-                    Text("Using OVH test file for download/upload tests. Latency measured via HEAD request.")
+                    Text("Latency is measured first (idle), then timed concurrency for throughput. This prevents HEAD from competing with big transfers.")
                         .font(.subheadline)
                     Spacer()
-                    Button(action: {
-                        showCloudflareTip = false
-                    }) {
+                    Button {
+                        showInfoBanner = false
+                    } label: {
                         Image(systemName: "xmark.circle")
                     }
                 }
                 .padding()
                 .background(Color.yellow.opacity(0.2))
                 .cornerRadius(8)
-                .padding([.leading, .trailing])
+                .padding(.horizontal)
             }
             
             if manager.isTesting {
@@ -220,7 +244,7 @@ struct SpeedTestView: View {
                              : "N/A")
                     }
                     HStack {
-                        Text("Latency")
+                        Text("HTTP Round-Trip Latency (HEAD)")
                         Spacer()
                         Text(manager.latencyMs != nil
                              ? String(format: "%.0f ms", manager.latencyMs!)
@@ -228,7 +252,6 @@ struct SpeedTestView: View {
                     }
                 }
                 
-                // Horizontal Bar Chart showing Download and Upload speeds.
                 if let dataPoints = buildDataPoints() {
                     Section(header: Text("Bar Chart (Final)")) {
                         Chart(dataPoints) {
@@ -258,11 +281,7 @@ struct SpeedTestView: View {
         .navigationTitle("Speed Test")
     }
     
-    /// Build data points for the bar chart using only download and upload speeds.
     private func buildDataPoints() -> [SpeedChartData]? {
-        if manager.downloadSpeedMbps == nil && manager.uploadSpeedMbps == nil {
-            return nil
-        }
         var points = [SpeedChartData]()
         if let dl = manager.downloadSpeedMbps {
             points.append(SpeedChartData(label: "Download", value: dl))
@@ -270,7 +289,7 @@ struct SpeedTestView: View {
         if let ul = manager.uploadSpeedMbps {
             points.append(SpeedChartData(label: "Upload", value: ul))
         }
-        return points
+        return points.isEmpty ? nil : points
     }
 }
 
