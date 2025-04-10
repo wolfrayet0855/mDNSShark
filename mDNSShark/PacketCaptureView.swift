@@ -6,25 +6,24 @@
 //
 
 
-//
-//  PacketCaptureView.swift
-//  mDNSShark
-//
-//  Created by user on 3/19/25.
-//  Replicates a Wireshark-like columns UI with a detail view.
-//
-
 import SwiftUI
 
 struct PacketCaptureView: View {
-    // This manager simulates or fetches packets. See "PacketCaptureManager.swift".
     @StateObject private var manager = PacketCaptureManager()
+    
+    // Define grid layout columns for Frame, Source, Destination, and Protocol
+    private let columns = [
+        GridItem(.fixed(55), alignment: .leading),    // Frame (Frame Number)
+        GridItem(.fixed(120), alignment: .leading),   // Source
+        GridItem(.fixed(120), alignment: .leading),   // Destination
+        GridItem(.fixed(80), alignment: .leading)     // Protocol
+    ]
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 
-                // -- Optional: A top bar with a "Capture" button, just to mimic "Start/Stop Capture"
+                // -- Top bar with a "Capture" button for starting/stopping capture
                 HStack {
                     Button(action: {
                         manager.isCapturing.toggle()
@@ -41,98 +40,48 @@ struct PacketCaptureView: View {
                             .cornerRadius(6)
                             .foregroundColor(.white)
                     }
-                    .padding()
+                    .padding(.leading)
                     
                     Spacer()
                 }
+                .padding(.vertical, 4)
                 .background(Color(UIColor.systemGray6))
                 
-                // -- Column headers (to replicate the look of Wireshark)
-                HStack(spacing: 0) {
-                    Text("No.")
-                        .bold()
-                        .frame(width: 50, alignment: .leading)
-                        .padding(.leading, 4)
-                    Divider()
-                    Text("Time")
-                        .bold()
-                        .frame(width: 80, alignment: .leading)
-                        .padding(.leading, 4)
-                    Divider()
-                    Text("Source")
-                        .bold()
-                        .frame(width: 120, alignment: .leading)
-                        .padding(.leading, 4)
-                    Divider()
-                    Text("Destination")
-                        .bold()
-                        .frame(width: 120, alignment: .leading)
-                        .padding(.leading, 4)
-                    Divider()
-                    Text("Proto")
-                        .bold()
-                        .frame(width: 60, alignment: .leading)
-                        .padding(.leading, 4)
-                    Divider()
-                    Text("Length")
-                        .bold()
-                        .frame(width: 60, alignment: .leading)
-                        .padding(.leading, 4)
-                    Divider()
-                    Text("Info")
-                        .bold()
-                        .frame(minWidth: 100, alignment: .leading)
-                        .padding(.leading, 4)
-                    Spacer()
+                // -- Table header with selected columns
+                LazyVGrid(columns: columns, spacing: 10) {
+                    Text("Frame").bold()
+                    Text("Source").bold()
+                    Text("Destination").bold()
+                    Text("Protocol").bold()
                 }
-                .frame(height: 40)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 8)
                 .background(Color(UIColor.systemGray5))
                 
-                // -- List of captured packets
-                List(manager.packets) { packet in
-                    NavigationLink(destination: PacketDetailView(packet: packet)) {
-                        // Each row in the "table"
-                        HStack(spacing: 0) {
-                            Text("\(packet.frameNumber)")
-                                .frame(width: 50, alignment: .leading)
-                                .lineLimit(1)
-                                .padding(.leading, 4)
-                            Divider()
-                            Text(packet.time)
-                                .frame(width: 80, alignment: .leading)
-                                .lineLimit(1)
-                                .padding(.leading, 4)
-                            Divider()
-                            Text(packet.source)
-                                .frame(width: 120, alignment: .leading)
-                                .lineLimit(1)
-                                .padding(.leading, 4)
-                            Divider()
-                            Text(packet.destination)
-                                .frame(width: 120, alignment: .leading)
-                                .lineLimit(1)
-                                .padding(.leading, 4)
-                            Divider()
-                            Text(packet.protocolName)
-                                .frame(width: 60, alignment: .leading)
-                                .lineLimit(1)
-                                .padding(.leading, 4)
-                            Divider()
-                            Text("\(packet.length)")
-                                .frame(width: 60, alignment: .leading)
-                                .lineLimit(1)
-                                .padding(.leading, 4)
-                            Divider()
-                            Text(packet.info)
-                                .frame(minWidth: 100, alignment: .leading)
-                                .lineLimit(1)
-                                .padding(.leading, 4)
-                            Spacer()
+                // -- Table content inside a scrollable view
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(manager.packets) { packet in
+                            NavigationLink(destination: PacketDetailView(packet: packet)) {
+                                LazyVGrid(columns: columns, spacing: 10) {
+                                    Text("\(packet.frameNumber)")
+                                    Text(packet.source)
+                                    Text(packet.destination)
+                                    Text(packet.protocolName)
+                                }
+                                .padding(8)
+                                .background(Color.white)
+                                .overlay(
+                                    Rectangle()
+                                        .stroke(Color(UIColor.systemGray4), lineWidth: 0.5)
+                                )
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("Packet Capture")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

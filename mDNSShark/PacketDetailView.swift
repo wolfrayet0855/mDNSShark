@@ -2,14 +2,6 @@
 //  PacketDetailView.swift
 //  mDNSShark
 //
-//  Created by user on 4/10/25.
-//
-
-
-//
-//  PacketDetailView.swift
-//  mDNSShark
-//
 
 import SwiftUI
 
@@ -18,45 +10,17 @@ struct PacketDetailView: View {
     
     var body: some View {
         Form {
+            // Show all details (including Time, Length, Info)
             Section(header: Text("Packet Summary")) {
-                HStack {
-                    Text("Frame:")
-                    Spacer()
-                    Text("\(packet.frameNumber)")
-                }
-                HStack {
-                    Text("Time:")
-                    Spacer()
-                    Text(packet.time)
-                }
-                HStack {
-                    Text("Source:")
-                    Spacer()
-                    Text(packet.source)
-                }
-                HStack {
-                    Text("Destination:")
-                    Spacer()
-                    Text(packet.destination)
-                }
-                HStack {
-                    Text("Protocol:")
-                    Spacer()
-                    Text(packet.protocolName)
-                }
-                HStack {
-                    Text("Length:")
-                    Spacer()
-                    Text("\(packet.length)")
-                }
-                HStack {
-                    Text("Info:")
-                    Spacer()
-                    Text(packet.info)
-                }
+                keyValueRow("No.", "\(packet.frameNumber)")
+                keyValueRow("Time", packet.time)
+                keyValueRow("Source", packet.source)
+                keyValueRow("Destination", packet.destination)
+                keyValueRow("Protocol", packet.protocolName)
+                keyValueRow("Length", "\(packet.length)")
+                keyValueRow("Info", packet.info)
             }
             
-            // A separate section for raw/hex dump
             Section(header: Text("Hex Dump")) {
                 ScrollView {
                     Text(packet.hexDump)
@@ -69,4 +33,19 @@ struct PacketDetailView: View {
         .navigationTitle("Frame \(packet.frameNumber)")
         .navigationBarTitleDisplayMode(.inline)
     }
+    
+    // Helper for consistent layout
+    @ViewBuilder
+    private func keyValueRow(_ key: String, _ value: String) -> some View {
+        HStack {
+            Text(key)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value)
+                .font(.subheadline)
+                .multilineTextAlignment(.trailing)
+        }
+    }
 }
+
