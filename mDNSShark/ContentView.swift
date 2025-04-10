@@ -5,9 +5,6 @@
 //  Created by user on 3/19/25.
 //
 
-
-//  ContentView.swift
-//  mDNSShark
 import SwiftUI
 
 struct ContentView: View {
@@ -15,6 +12,115 @@ struct ContentView: View {
     @State private var scanDuration: Double = 25.0
     @State private var showRouterTip: Bool = true
     
+    // -- Added: We place the entire scanning UI in a "ScanView" subview
+    //    so we can embed it in a TabView next to the new "PacketCaptureView".
+    
+    var body: some View {
+        TabView {
+            // MARK: - Existing Scan UI
+            ScanView(scanner: scanner, scanDuration: $scanDuration, showRouterTip: $showRouterTip)
+                .tabItem {
+                    Image(systemName: "network")
+                    Text("Scanner")
+                }
+            
+            // MARK: - New PacketCaptureView tab
+            PacketCaptureView()
+                .tabItem {
+                    Image(systemName: "magnifyingglass")
+                    Text("Packets")
+                }
+        }
+    }
+}
+
+// MARK: - Extracted scanning UI into a child view for readability
+struct ScanView: View {
+    @ObservedObject var scanner: NetworkScanner
+    @Binding var scanDuration: Double
+    @Binding var showRouterTip: Bool
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                if showRouterTip {
+                    HStack {
+                        Image(systemName: "info.circle")
+                        Text("Tip: On your local network, you can detect devices by logging into your router.")
+                            .font(.subheadline)
+                        Spacer()
+                        Button(action: {
+                            showRouterTip = false
+                        }) {
+                            Image(systemName: "xmark.circle")
+                        }
+                    }
+                    .padding()
+                    .background(Color.yellow.opacity(0.2))
+                    .cornerRadius(8)
+                    .padding([.leading, .trailing])
+                }
+                
+                VStack {
+                    Text("Scan Duration: \(Int(scanDuration)) seconds")
+                    Slider(value: $scanDuration, in: 5...60, step: 1)
+                        .padding([.leading, .trailing])
+                }
+                
+                Button(action: {
+                    scanner.scanNetwork(duration: scanDuration)
+                }) {
+                    Text(scanner.isScanning ? "Scan in Progress" : "Scan Network")
+                        .font(.headline)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(scanner.isScanning ? Color.gray : Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .disabled(scanner.isScanning)
+                .padding()
+                
+                if scanner.isScanning {
+                    ProgressView()
+                        .padding()
+                }
+                
+                if scanner.devices.isEmpty && !scanner.isScanning {
+                    Text("No devices found. Tap 'Scan Network' to start.")
+                        .foregroundColor(.gray)
+                        .padding()
+                } else {
+                    List(scanner.devices) { device in
+                        NavigationLink(destination: DeviceDetailView(device: device)) {
+                            VStack(alignment: .leading) {
+                                Text(device.identifier)
+                                    .font(.headline)
+                                Text(device.serviceType)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                // For demonstration, we can add a short summary or fallback text.
+                                Text(serviceTypeSummaries[device.serviceType] ?? "No summary available.")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                }
+                Spacer()
+            }
+            .navigationTitle("mDNSShark")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: SpeedTestView()) {
+                        Image(systemName: "speedometer")
+                    }
+                }
+            }
+        }
+    }
+    
+    // Moved from original code to keep content neat
     private let serviceTypeSummaries: [String: String] = [
         // Common / Web
         "_http._tcp": "HTTP web service, often used for websites/APIs.",
@@ -85,85 +191,6 @@ struct ContentView: View {
         "_xbmc-jsonrpc._tcp": "JSON-RPC API for XBMC/Kodi media centers. (Newly added)",
         "_plexmediasvr._tcp": "Plex Media Server for streaming multimedia content. (Newly added)"
     ]
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                if showRouterTip {
-                    HStack {
-                        Image(systemName: "info.circle")
-                        Text("Tip: On your local network, you can detect devices by logging into your router.")
-                            .font(.subheadline)
-                        Spacer()
-                        Button(action: {
-                            showRouterTip = false
-                        }) {
-                            Image(systemName: "xmark.circle")
-                        }
-                    }
-                    .padding()
-                    .background(Color.yellow.opacity(0.2))
-                    .cornerRadius(8)
-                    .padding([.leading, .trailing])
-                }
-                
-                VStack {
-                    Text("Scan Duration: \(Int(scanDuration)) seconds")
-                    Slider(value: $scanDuration, in: 5...60, step: 1)
-                        .padding([.leading, .trailing])
-                }
-                
-                Button(action: {
-                    scanner.scanNetwork(duration: scanDuration)
-                }) {
-                    Text(scanner.isScanning ? "Scan in Progress" : "Scan Network")
-                        .font(.headline)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(scanner.isScanning ? Color.gray : Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
-                .disabled(scanner.isScanning)
-                .padding()
-                
-                if scanner.isScanning {
-                    ProgressView()
-                        .padding()
-                }
-                
-                if scanner.devices.isEmpty && !scanner.isScanning {
-                    Text("No devices found. Tap 'Scan Network' to start.")
-                        .foregroundColor(.gray)
-                        .padding()
-                } else {
-                    List(scanner.devices) { device in
-                        NavigationLink(destination: DeviceDetailView(device: device)) {
-                            VStack(alignment: .leading) {
-                                Text(device.identifier)
-                                    .font(.headline)
-                                Text(device.serviceType)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Text(serviceTypeSummaries[device.serviceType] ?? "No summary available.")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                }
-                Spacer()
-            }
-            .navigationTitle("mDNSShark")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: SpeedTestView()) {
-                        Image(systemName: "speedometer")
-                    }
-                }
-            }
-        }
-    }
 }
 
 struct ContentView_Previews: PreviewProvider {
@@ -171,3 +198,4 @@ struct ContentView_Previews: PreviewProvider {
         ContentView()
     }
 }
+

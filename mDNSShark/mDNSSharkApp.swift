@@ -1,4 +1,7 @@
-//Entry point for the mDNSShark application
+//
+//  mDNSSharkApp.swift
+//  mDNSShark
+//
 
 import SwiftUI
 
@@ -6,8 +9,8 @@ import SwiftUI
 struct mDNSSharkApp: App {
     var body: some Scene {
         WindowGroup {
+            // Display the new ContentView with TabView inside
             ContentView()
         }
     }
 }
-
